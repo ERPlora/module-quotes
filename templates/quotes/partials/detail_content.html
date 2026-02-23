@@ -1,0 +1,435 @@
+{% load djicons i18n %}
+
+{% csrf_token %}
+<div class="p-4">
+    {% if error %}
+    <div class="p-6 text-center text-base-content/60">
+        {% icon "alert-circle-outline" css_class="text-5xl block mx-auto mb-2 text-error" %}
+        <p class="mt-2">{{ error }}</p>
+        <button class="btn btn-sm color-primary mt-3"
+            hx-get="{% url 'quotes:list' %}"
+            hx-target="#main-content-area"
+            hx-push-url="true">
+            {% trans "Back to Quotes" %}
+        </button>
+    </div>
+    {% else %}
+    <!-- Page Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div class="flex items-center gap-4">
+            <button class="btn btn-ghost"
+                hx-get="{% url 'quotes:list' %}"
+                hx-target="#main-content-area"
+                hx-push-url="true">
+                {% icon "arrow-back-outline" %}
+            </button>
+            <div>
+                <h1 class="text-2xl font-bold">
+                    {{ quote.quote_number|default:"Draft Quote" }}
+                </h1>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="badge {% if quote.status == 'accepted' %}color-success{% elif quote.status == 'sent' %}color-primary{% elif quote.status == 'rejected' %}color-error{% elif quote.status == 'expired' %}color-warning{% elif quote.status == 'converted' %}color-primary{% endif %}">
+                        {{ quote.get_status_display }}
+                    </span>
+                    {% if quote.title %}
+                    <span class="text-base-content/60">&middot; {{ quote.title }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            {% if quote.status == 'draft' %}
+            <button class="btn color-primary" onclick="sendQuote()">
+                {% icon "send-outline" %}
+                {% trans "Send" %}
+            </button>
+            <button class="btn btn-outline"
+                    hx-get="{% url 'quotes:edit' quote.id %}"
+                    hx-target="#main-content-area"
+                    hx-push-url="true">
+                {% icon "create-outline" %}
+                {% trans "Edit" %}
+            </button>
+            {% endif %}
+            {% if quote.status == 'sent' %}
+            <button class="btn color-success" onclick="acceptQuote()">
+                {% icon "checkmark-circle-outline" %}
+                {% trans "Accept" %}
+            </button>
+            <button class="btn btn-outline color-error" onclick="openRejectModal()">
+                {% icon "close-circle-outline" %}
+                {% trans "Reject" %}
+            </button>
+            <button class="btn btn-outline"
+                    hx-get="{% url 'quotes:edit' quote.id %}"
+                    hx-target="#main-content-area"
+                    hx-push-url="true">
+                {% icon "create-outline" %}
+                {% trans "Edit" %}
+            </button>
+            {% endif %}
+            {% if quote.status == 'accepted' %}
+            <button class="btn color-primary" onclick="convertQuote()">
+                {% icon "swap-horizontal-outline" %}
+                {% trans "Convert to Sale" %}
+            </button>
+            {% endif %}
+            <button class="btn btn-outline" onclick="duplicateQuote()">
+                {% icon "copy-outline" %}
+                {% trans "Duplicate" %}
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="lg:col-span-2">
+            <!-- Customer Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">{% icon "person-outline" css_class="text-primary" %} {% trans "Customer" %}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-xs text-base-content/60 mb-1">{% trans "Name" %}</div>
+                            <div class="font-medium">{{ quote.customer_name }}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-base-content/60 mb-1">{% trans "Email" %}</div>
+                            <div>{{ quote.customer_email|default:"-" }}</div>
+                        </div>
+                        {% if quote.customer_phone %}
+                        <div>
+                            <div class="text-xs text-base-content/60 mb-1">{% trans "Phone" %}</div>
+                            <div>{{ quote.customer_phone }}</div>
+                        </div>
+                        {% endif %}
+                        {% if quote.customer_address %}
+                        <div class="{% if quote.customer_phone %}{% else %}col-span-2{% endif %}">
+                            <div class="text-xs text-base-content/60 mb-1">{% trans "Address" %}</div>
+                            <div>{{ quote.customer_address }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quote Lines -->
+            <div class="card" id="quote-lines-card">
+                <div class="card-header flex justify-between items-center">
+                    <h3 class="card-title">{% icon "list-outline" css_class="text-primary" %} {% trans "Items" %}</h3>
+                    {% if quote.status == 'draft' or quote.status == 'sent' %}
+                    <div x-data="{ showAddLine: false }">
+                        <button class="btn btn-sm color-primary" @click="showAddLine = !showAddLine">
+                            {% icon "add-outline" %}
+                            {% trans "Add Item" %}
+                        </button>
+
+                        <!-- Add Line Form (inline) -->
+                        <div x-show="showAddLine" x-cloak class="mt-4 p-4 bg-base-200/30 rounded-lg">
+                            <form hx-post="{% url 'quotes:line_add' quote.id %}"
+                                  hx-target="#quote-lines-body"
+                                  hx-swap="innerHTML"
+                                  @htmx:after-request="if(event.detail.successful) showAddLine = false">
+                                {% csrf_token %}
+                                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                                    <div class="form-group col-span-2">
+                                        <label class="form-group-label">{% trans "Description" %}</label>
+                                        <input type="text" name="description" class="input" required
+                                               placeholder="{% trans 'Item description' %}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-group-label">{% trans "Type" %}</label>
+                                        <select name="line_type" class="select">
+                                            <option value="custom">{% trans "Custom" %}</option>
+                                            <option value="product">{% trans "Product" %}</option>
+                                            <option value="service">{% trans "Service" %}</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-group-label">{% trans "Quantity" %}</label>
+                                        <input type="number" name="quantity" class="input" value="1" step="0.001" min="0.001">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-group-label">{% trans "Unit Price" %}</label>
+                                        <input type="number" name="unit_price" class="input" value="0.00" step="0.01" min="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-group-label">{% trans "Discount %" %}</label>
+                                        <input type="number" name="discount_percent" class="input" value="0" step="0.01" min="0" max="100">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-group-label">{% trans "Tax Rate %" %}</label>
+                                        <input type="number" name="tax_rate" class="input" value="{{ quote.tax_rate }}" step="0.01" min="0">
+                                    </div>
+                                </div>
+                                <input type="hidden" name="sort_order" value="0">
+                                <div class="flex justify-end gap-2">
+                                    <button type="button" class="btn btn-ghost btn-sm" @click="showAddLine = false">
+                                        {% trans "Cancel" %}
+                                    </button>
+                                    <button type="submit" class="btn btn-sm color-primary">
+                                        {% icon "add-outline" %}
+                                        {% trans "Add" %}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0" id="quote-lines-body">
+                    {% include "quotes/partials/quote_lines.html" %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Sidebar -->
+        <div>
+            <!-- Totals -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">{% trans "Summary" %}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">{% trans "Subtotal" %}</span>
+                            <span>{{ quote.subtotal|floatformat:2 }}</span>
+                        </div>
+                        {% if quote.discount_amount %}
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">
+                                {% trans "Discount" %}
+                                {% if quote.discount_percent %} ({{ quote.discount_percent }}%){% endif %}
+                            </span>
+                            <span class="text-error">-{{ quote.discount_amount|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">{% trans "Tax" %} ({{ quote.tax_rate }}%)</span>
+                            <span>{{ quote.tax_amount|floatformat:2 }}</span>
+                        </div>
+                        <hr class="border-base-200">
+                        <div class="flex justify-between text-lg font-bold">
+                            <span>{% trans "Total" %}</span>
+                            <span>{{ quote.total|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Details -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">{% trans "Details" %}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="space-y-3">
+                        <div>
+                            <div class="text-xs text-base-content/60 mb-1">{% trans "Series" %}</div>
+                            <div>{{ quote.series.prefix }} - {{ quote.series.name }}</div>
+                        </div>
+                        {% if quote.valid_until %}
+                        <div>
+                            <div class="text-xs text-base-content/60 mb-1">{% trans "Valid Until" %}</div>
+                            <div class="{% if quote.is_expired %}text-error font-medium{% endif %}">
+                                {{ quote.valid_until|date:"M d, Y" }}
+                                {% if quote.days_until_expiry != None %}
+                                    {% if quote.days_until_expiry > 0 %}
+                                    <span class="text-xs text-base-content/60">({{ quote.days_until_expiry }} {% trans "days left" %})</span>
+                                    {% elif quote.days_until_expiry == 0 %}
+                                    <span class="text-xs text-warning">({% trans "expires today" %})</span>
+                                    {% else %}
+                                    <span class="text-xs text-error">({% trans "expired" %})</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <div class="text-xs text-base-content/60 mb-1">{% trans "Created" %}</div>
+                            <div>{{ quote.created_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                        {% if quote.sent_at %}
+                        <div>
+                            <div class="text-xs text-base-content/60 mb-1">{% trans "Sent" %}</div>
+                            <div>{{ quote.sent_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                        {% endif %}
+                        {% if quote.accepted_at %}
+                        <div>
+                            <div class="text-xs text-base-content/60 mb-1">{% trans "Accepted" %}</div>
+                            <div class="text-success">{{ quote.accepted_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                        {% endif %}
+                        {% if quote.rejected_at %}
+                        <div>
+                            <div class="text-xs text-base-content/60 mb-1">{% trans "Rejected" %}</div>
+                            <div class="text-error">{{ quote.rejected_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                        {% endif %}
+                        {% if quote.converted_at %}
+                        <div>
+                            <div class="text-xs text-base-content/60 mb-1">{% trans "Converted" %}</div>
+                            <div>{{ quote.converted_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            {% if quote.notes %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">{% trans "Notes" %}</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-sm text-base-content/60 whitespace-pre-line">{{ quote.notes }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Terms -->
+            {% if quote.terms %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">{% trans "Terms & Conditions" %}</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-sm text-base-content/60 whitespace-pre-line">{{ quote.terms }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Rejection Reason -->
+            {% if quote.rejection_reason %}
+            <div class="card mb-4" style="border-color: var(--color-error)">
+                <div class="card-header">
+                    <h3 class="card-title text-error">{% trans "Rejection Reason" %}</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-sm text-base-content/60 whitespace-pre-line">{{ quote.rejection_reason }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if quote %}
+<!-- Reject Modal -->
+<div x-data="{ rejectOpen: false }" id="reject-modal-container">
+    <div class="modal-backdrop" :data-state="rejectOpen ? 'open' : 'closed'" @click.self="rejectOpen = false">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3 class="modal-title">{% trans "Reject Quote" %}</h3>
+                <button class="modal-close" @click="rejectOpen = false">
+                    {% icon "close-outline" %}
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-group-label">{% trans "Reason (optional)" %}</label>
+                    <textarea id="reject-reason" class="textarea" rows="3"
+                              placeholder="{% trans 'Why was this quote rejected?' %}"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost btn-sm" @click="rejectOpen = false">
+                    {% trans "Cancel" %}
+                </button>
+                <button class="btn btn-sm color-error" @click="submitReject()">
+                    {% icon "close-circle-outline" %}
+                    {% trans "Reject" %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function sendQuote() {
+    if (!confirm('{% trans "Send this quote? This will assign a quote number and mark it as sent." %}')) return;
+    fetch('{% url "quotes:send" quote.id %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}
+    }).then(r => r.json()).then(data => {
+        if (data.ok) {
+            htmx.ajax('GET', '{% url "quotes:detail" quote.id %}', '#main-content-area');
+        } else {
+            alert(data.error || '{% trans "Error sending quote" %}');
+        }
+    }).catch(() => alert('{% trans "Error sending quote" %}'));
+}
+
+function acceptQuote() {
+    if (!confirm('{% trans "Accept this quote?" %}')) return;
+    fetch('{% url "quotes:accept" quote.id %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}
+    }).then(r => r.json()).then(data => {
+        if (data.ok) {
+            htmx.ajax('GET', '{% url "quotes:detail" quote.id %}', '#main-content-area');
+        } else {
+            alert(data.error || '{% trans "Error accepting quote" %}');
+        }
+    }).catch(() => alert('{% trans "Error accepting quote" %}'));
+}
+
+function openRejectModal() {
+    const container = document.getElementById('reject-modal-container');
+    if (container && container.__x) {
+        container.__x.$data.rejectOpen = true;
+    }
+}
+
+function submitReject() {
+    const reason = document.getElementById('reject-reason').value;
+    const formData = new FormData();
+    formData.append('reason', reason);
+    fetch('{% url "quotes:reject" quote.id %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value},
+        body: formData
+    }).then(r => r.json()).then(data => {
+        if (data.ok) {
+            htmx.ajax('GET', '{% url "quotes:detail" quote.id %}', '#main-content-area');
+        } else {
+            alert(data.error || '{% trans "Error rejecting quote" %}');
+        }
+    }).catch(() => alert('{% trans "Error rejecting quote" %}'));
+}
+
+function duplicateQuote() {
+    fetch('{% url "quotes:duplicate" quote.id %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}
+    }).then(r => r.json()).then(data => {
+        if (data.ok) {
+            htmx.ajax('GET', '/m/quotes/' + data.id + '/', '#main-content-area');
+            history.pushState({}, '', '/m/quotes/' + data.id + '/');
+        } else {
+            alert(data.error || '{% trans "Error duplicating quote" %}');
+        }
+    }).catch(() => alert('{% trans "Error duplicating quote" %}'));
+}
+
+function convertQuote() {
+    if (!confirm('{% trans "Convert this quote to a sale? The quote will be marked as converted." %}')) return;
+    fetch('{% url "quotes:convert" quote.id %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}
+    }).then(r => r.json()).then(data => {
+        if (data.ok) {
+            htmx.ajax('GET', '{% url "quotes:detail" quote.id %}', '#main-content-area');
+        } else {
+            alert(data.error || '{% trans "Error converting quote" %}');
+        }
+    }).catch(() => alert('{% trans "Error converting quote" %}'));
+}
+</script>
+{% endif %}

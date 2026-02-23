@@ -1,0 +1,61 @@
+/*
+ * Quotes module styles
+ *
+ * Module-specific overrides and custom styles.
+ * Most styling comes from the ux CSS library (unprefixed classes).
+ */
+
+/* Quote status badge colors are handled by ux color classes:
+ *   draft    = default (neutral)
+ *   sent     = color-primary
+ *   accepted = color-success
+ *   rejected = color-error
+ *   expired  = color-warning
+ *   converted = color-primary
+ */
+
+/* Line items table - ensure proper alignment */
+#quote-lines-body table th,
+#quote-lines-body table td {
+    vertical-align: middle;
+}
+
+/* Add line form animation */
+[x-cloak] {
+    display: none !important;
+}
+
+/* Inline edit row highlight */
+.quote-line-editing {
+    background-color: var(--color-base-200);
+}
+
+/* Expiry warning styling */
+.quote-expiry-warning {
+    color: var(--color-warning);
+    font-weight: 500;
+}
+
+.quote-expiry-expired {
+    color: var(--color-error);
+    font-weight: 600;
+}
+
+/* Detail page header responsive */
+@media (max-width: 768px) {
+    .quote-detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .quote-detail-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .quote-detail-actions .btn {
+        flex: 1;
+        min-width: 0;
+    }
+}

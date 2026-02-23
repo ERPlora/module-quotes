@@ -1,0 +1,201 @@
+{% load djicons i18n %}
+
+<div class="p-4">
+    <!-- Monthly Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div class="card">
+            <div class="card-body p-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                        {% icon "document-text-outline" css_class="text-2xl text-primary" %}
+                    </div>
+                    <div>
+                        <div class="text-sm text-base-content/60">{% trans "This Month" %}</div>
+                        <div class="text-2xl font-bold">{{ monthly_total }}</div>
+                        <div class="text-xs text-base-content/60">{% trans "quotes" %}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body p-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                        {% icon "send-outline" css_class="text-2xl text-primary" %}
+                    </div>
+                    <div>
+                        <div class="text-sm text-base-content/60">{% trans "Sent & Awaiting" %}</div>
+                        <div class="text-2xl font-bold">{{ sent_count }}</div>
+                        <div class="text-xs text-base-content/60">{% trans "pending response" %}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body p-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-success/10 rounded-xl flex items-center justify-center">
+                        {% icon "checkmark-circle-outline" css_class="text-2xl text-success" %}
+                    </div>
+                    <div>
+                        <div class="text-sm text-base-content/60">{% trans "Accepted" %}</div>
+                        <div class="text-2xl font-bold text-success">{{ accepted_count }}</div>
+                        <div class="text-xs text-base-content/60">{{ accepted_value|floatformat:2 }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Stats -->
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="card">
+            <div class="card-body flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center">
+                    {% icon "close-circle-outline" css_class="text-xl text-error" %}
+                </div>
+                <div>
+                    <div class="text-2xl font-bold">{{ rejected_count }}</div>
+                    <div class="text-xs text-base-content/60">{% trans "Rejected" %}</div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+                    {% icon "trending-up-outline" css_class="text-xl text-success" %}
+                </div>
+                <div>
+                    <div class="text-2xl font-bold">{{ acceptance_rate }}%</div>
+                    <div class="text-xs text-base-content/60">{% trans "Acceptance Rate" %}</div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center">
+                    {% icon "time-outline" css_class="text-xl text-warning" %}
+                </div>
+                <div>
+                    <div class="text-2xl font-bold">{{ expiring_soon }}</div>
+                    <div class="text-xs text-base-content/60">{% trans "Expiring Soon" %}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title">{% trans "Quick Actions" %}</h3>
+        </div>
+        <div class="card-body p-0">
+            <div class="list">
+                <a hx-get="{% url 'quotes:add' %}"
+                   hx-target="#main-content-area"
+                   hx-push-url="true"
+                   class="list-item list-item-clickable">
+                    <div class="list-item-start">
+                        {% icon "add-circle-outline" css_class="text-xl text-primary" %}
+                    </div>
+                    <div class="list-item-content">
+                        <div class="list-item-label">{% trans "Create New Quote" %}</div>
+                        <div class="list-item-note">{% trans "Start a new draft quote" %}</div>
+                    </div>
+                    <div class="list-item-end">
+                        <span class="list-item-chevron"></span>
+                    </div>
+                </a>
+                <a hx-get="{% url 'quotes:list' %}"
+                   hx-target="#main-content-area"
+                   hx-push-url="true"
+                   class="list-item list-item-clickable">
+                    <div class="list-item-start">
+                        {% icon "list-outline" css_class="text-xl text-success" %}
+                    </div>
+                    <div class="list-item-content">
+                        <div class="list-item-label">{% trans "View All Quotes" %}</div>
+                        <div class="list-item-note">{% trans "Browse and manage your quotes" %}</div>
+                    </div>
+                    <div class="list-item-end">
+                        <span class="list-item-chevron"></span>
+                    </div>
+                </a>
+                <a hx-get="{% url 'quotes:series' %}"
+                   hx-target="#main-content-area"
+                   hx-push-url="true"
+                   class="list-item list-item-clickable">
+                    <div class="list-item-start">
+                        {% icon "layers-outline" css_class="text-xl text-warning" %}
+                    </div>
+                    <div class="list-item-content">
+                        <div class="list-item-label">{% trans "Manage Series" %}</div>
+                        <div class="list-item-note">{% trans "Configure quote numbering series" %}</div>
+                    </div>
+                    <div class="list-item-end">
+                        <span class="list-item-chevron"></span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if recent_quotes %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title">{% trans "Recent Quotes" %}</h3>
+        </div>
+        <div class="card-body p-0">
+            <div class="list">
+                {% for quote in recent_quotes %}
+                <a hx-get="{% url 'quotes:detail' quote.id %}"
+                   hx-target="#main-content-area"
+                   hx-push-url="true"
+                   class="list-item list-item-clickable">
+                    <div class="list-item-start">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center {% if quote.status == 'accepted' %}bg-success/10{% elif quote.status == 'sent' %}bg-primary/10{% elif quote.status == 'rejected' %}bg-error/10{% elif quote.status == 'expired' %}bg-warning/10{% elif quote.status == 'converted' %}bg-primary/10{% else %}bg-base-200/50{% endif %}">
+                            {% if quote.status == 'accepted' %}
+                                {% icon "checkmark-circle-outline" css_class="text-xl text-success" %}
+                            {% elif quote.status == 'sent' %}
+                                {% icon "send-outline" css_class="text-xl text-primary" %}
+                            {% elif quote.status == 'rejected' %}
+                                {% icon "close-circle-outline" css_class="text-xl text-error" %}
+                            {% elif quote.status == 'expired' %}
+                                {% icon "time-outline" css_class="text-xl text-warning" %}
+                            {% elif quote.status == 'converted' %}
+                                {% icon "swap-horizontal-outline" css_class="text-xl text-primary" %}
+                            {% else %}
+                                {% icon "create-outline" css_class="text-xl text-base-content/60" %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="list-item-content">
+                        <div class="list-item-label">
+                            {{ quote.quote_number|default:"Draft" }}
+                            <span class="text-base-content/60 font-normal">&middot; {{ quote.customer_name }}</span>
+                        </div>
+                        <div class="list-item-note">
+                            {% if quote.title %}{{ quote.title }} &middot; {% endif %}
+                            {{ quote.created_at|date:"M d, Y" }}
+                        </div>
+                    </div>
+                    <div class="list-item-end text-right">
+                        <div class="font-semibold">{{ quote.total|floatformat:2 }}</div>
+                        <span class="badge badge-sm {% if quote.status == 'accepted' %}color-success{% elif quote.status == 'sent' %}color-primary{% elif quote.status == 'rejected' %}color-error{% elif quote.status == 'expired' %}color-warning{% elif quote.status == 'converted' %}color-primary{% endif %}">
+                            {{ quote.get_status_display }}
+                        </span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="p-4 rounded-xl bg-primary/5 flex items-start gap-3">
+        {% icon "information-circle-outline" css_class="text-xl text-primary mt-0.5 shrink-0" %}
+        <p class="text-sm text-base-content/60">
+            {% trans "Create and manage quotes, proposals and budgets for your customers. Quotes start as drafts, get sent to clients, and can be accepted, rejected or converted to sales." %}
+        </p>
+    </div>
+</div>

@@ -1,0 +1,129 @@
+{% load djicons i18n %}
+
+<div x-data="{
+    selectedIds: [],
+    selectAll: false,
+    deleteConfirm: false,
+    deleteTarget: null,
+    toggleSelect(id) {
+        const idx = this.selectedIds.indexOf(id);
+        if (idx > -1) this.selectedIds.splice(idx, 1);
+        else this.selectedIds.push(id);
+        this.selectAll = false;
+    },
+    toggleAll(ids) {
+        if (this.selectAll) this.selectedIds = [];
+        else this.selectedIds = [...ids];
+        this.selectAll = !this.selectAll;
+    },
+    clearSelection() { this.selectedIds = []; this.selectAll = false; },
+    confirmDelete() {
+        if (this.deleteTarget) {
+            htmx.ajax('POST', this.deleteTarget.url, {
+                target: '#datatable-body',
+                swap: 'innerHTML',
+                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}' }
+            });
+        }
+        this.deleteConfirm = false;
+        this.deleteTarget = null;
+    }
+}">
+
+    <div class="datatable glass mt-5" id="quotes-datatable">
+
+        <!-- Toolbar -->
+        <div class="datatable-toolbar">
+            <div class="datatable-toolbar-start">
+                <label class="input input-sm datatable-search">
+                    {% icon "search-outline" %}
+                    <input type="search"
+                           name="q"
+                           placeholder="{% trans 'Search by number, customer or title...' %}"
+                           value="{{ search|default:'' }}"
+                           autocomplete="off"
+                           hx-get="{% url 'quotes:list' %}"
+                           hx-target="#datatable-body"
+                           hx-include="#quotes-datatable"
+                           hx-trigger="input changed delay:300ms, search">
+                </label>
+                <select name="status"
+                        class="select select-sm"
+                        hx-get="{% url 'quotes:list' %}"
+                        hx-target="#datatable-body"
+                        hx-include="#quotes-datatable"
+                        hx-trigger="change">
+                    <option value="">{% trans "All Status" %}</option>
+                    <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>{% trans "Draft" %}</option>
+                    <option value="sent" {% if status_filter == 'sent' %}selected{% endif %}>{% trans "Sent" %}</option>
+                    <option value="accepted" {% if status_filter == 'accepted' %}selected{% endif %}>{% trans "Accepted" %}</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>{% trans "Rejected" %}</option>
+                    <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>{% trans "Expired" %}</option>
+                    <option value="converted" {% if status_filter == 'converted' %}selected{% endif %}>{% trans "Converted" %}</option>
+                </select>
+                {% if series_list %}
+                <select name="series"
+                        class="select select-sm"
+                        hx-get="{% url 'quotes:list' %}"
+                        hx-target="#datatable-body"
+                        hx-include="#quotes-datatable"
+                        hx-trigger="change">
+                    <option value="">{% trans "All Series" %}</option>
+                    {% for s in series_list %}
+                    <option value="{{ s.id }}" {% if series_filter == s.id|slugify %}selected{% endif %}>{{ s.prefix }} - {{ s.name }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+            <div class="datatable-toolbar-end">
+                <button class="btn btn-sm color-primary"
+                        hx-get="{% url 'quotes:add' %}"
+                        hx-target="#main-content-area"
+                        hx-push-url="true">
+                    {% icon "add-outline" %}
+                    {% trans "New Quote" %}
+                </button>
+            </div>
+        </div>
+
+        {% csrf_token %}
+
+        <!-- Hidden state inputs -->
+        <input type="hidden" name="sort" value="{{ sort_field|default:'date' }}">
+        <input type="hidden" name="dir" value="{{ sort_dir|default:'desc' }}">
+        <input type="hidden" name="per_page" value="{{ per_page|default:'10' }}">
+
+        <!-- Datatable Body (HTMX swap target) -->
+        <div id="datatable-body">
+            {% include "quotes/partials/quotes_list.html" %}
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-backdrop" :data-state="deleteConfirm ? 'open' : 'closed'" @click.self="deleteConfirm = false; deleteTarget = null">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3 class="modal-title">{% trans "Delete Quote" %}</h3>
+                <button class="modal-close" @click="deleteConfirm = false; deleteTarget = null">
+                    {% icon "close-outline" %}
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-sm text-base-content/70">
+                    {% trans "Are you sure you want to delete quote" %} <strong x-text="deleteTarget?.name"></strong>?
+                    {% trans "This action cannot be undone." %}
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost btn-sm" @click="deleteConfirm = false; deleteTarget = null">
+                    {% trans "Cancel" %}
+                </button>
+                <button class="btn btn-sm color-error" @click="confirmDelete()">
+                    {% icon "trash-outline" %}
+                    {% trans "Delete" %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>

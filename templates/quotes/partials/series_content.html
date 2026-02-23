@@ -1,0 +1,198 @@
+{% load djicons i18n %}
+
+<div x-data="{
+    addOpen: false,
+    editId: null,
+    deleteConfirm: false,
+    deleteTarget: null,
+    confirmDelete() {
+        if (this.deleteTarget) {
+            /* Series deletion not implemented as they might have quotes */
+        }
+        this.deleteConfirm = false;
+        this.deleteTarget = null;
+    }
+}" class="p-4">
+
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-4">
+        <div>
+            <h2 class="text-xl font-bold">{% trans "Quote Series" %}</h2>
+            <p class="text-sm text-base-content/60">{% trans "Manage numbering series for your quotes" %}</p>
+        </div>
+        <button class="btn btn-sm color-primary" @click="addOpen = !addOpen; editId = null">
+            {% icon "add-outline" %}
+            {% trans "Add Series" %}
+        </button>
+    </div>
+
+    <!-- Add Series Form -->
+    <div x-show="addOpen" x-cloak class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title">{% trans "New Series" %}</h3>
+        </div>
+        <div class="card-body">
+            <form hx-post="{% url 'quotes:series_add' %}"
+                  hx-target="#main-content-area"
+                  @htmx:after-request="if(event.detail.successful) addOpen = false">
+                {% csrf_token %}
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                    <div class="form-group">
+                        <label class="form-group-label">{% trans "Name" %} *</label>
+                        <input type="text" name="name" class="input" required
+                               placeholder="{% trans 'e.g. Standard Quotes' %}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-group-label">{% trans "Prefix" %} *</label>
+                        <input type="text" name="prefix" class="input" required
+                               placeholder="QT" maxlength="10" style="text-transform:uppercase">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-group-label">{% trans "Number Digits" %}</label>
+                        <input type="number" name="number_digits" class="input" value="5" min="1" max="10">
+                    </div>
+                </div>
+                <div class="flex items-center gap-6 mb-4">
+                    <label class="flex items-center gap-2">
+                        <label class="toggle color-success">
+                            <input type="checkbox" name="is_active" checked>
+                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        </label>
+                        <span class="text-sm">{% trans "Active" %}</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <label class="toggle color-primary">
+                            <input type="checkbox" name="is_default">
+                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        </label>
+                        <span class="text-sm">{% trans "Default" %}</span>
+                    </label>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="btn btn-ghost btn-sm" @click="addOpen = false">
+                        {% trans "Cancel" %}
+                    </button>
+                    <button type="submit" class="btn btn-sm color-primary">
+                        {% icon "save-outline" %}
+                        {% trans "Create" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Series List -->
+    {% if series_list %}
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="list">
+                {% for series in series_list %}
+                <div class="list-item" x-data="{ editing: false }">
+                    <!-- View Mode -->
+                    <template x-if="!editing">
+                        <div class="flex items-center w-full">
+                            <div class="list-item-start">
+                                <div class="w-10 h-10 rounded-lg flex items-center justify-center {% if series.is_active %}bg-primary/10{% else %}bg-base-200/50{% endif %}">
+                                    <span class="font-bold text-sm {% if series.is_active %}text-primary{% else %}text-base-content/40{% endif %}">{{ series.prefix }}</span>
+                                </div>
+                            </div>
+                            <div class="list-item-content">
+                                <div class="list-item-label">
+                                    {{ series.name }}
+                                    {% if series.is_default %}
+                                    <span class="badge badge-sm color-primary ml-1">{% trans "Default" %}</span>
+                                    {% endif %}
+                                    {% if not series.is_active %}
+                                    <span class="badge badge-sm ml-1">{% trans "Inactive" %}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="list-item-note">
+                                    {% trans "Next:" %} {{ series.prefix }}-{{ series.next_number|stringformat:"05d" }}
+                                    &middot;
+                                    {{ series.quote_count }} {% trans "quotes" %}
+                                </div>
+                            </div>
+                            <div class="list-item-end">
+                                <button class="btn btn-ghost btn-sm btn-circle" @click="editing = true" title="{% trans 'Edit' %}">
+                                    {% icon "create-outline" %}
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Edit Mode -->
+                    <template x-if="editing">
+                        <div class="w-full">
+                            <form hx-post="{% url 'quotes:series_edit' series.id %}"
+                                  hx-target="#main-content-area"
+                                  @htmx:after-request="if(event.detail.successful) editing = false">
+                                {% csrf_token %}
+                                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-3">
+                                    <div class="form-group">
+                                        <label class="form-group-label">{% trans "Name" %}</label>
+                                        <input type="text" name="name" class="input" value="{{ series.name }}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-group-label">{% trans "Prefix" %}</label>
+                                        <input type="text" name="prefix" class="input" value="{{ series.prefix }}" required
+                                               maxlength="10" style="text-transform:uppercase">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-group-label">{% trans "Number Digits" %}</label>
+                                        <input type="number" name="number_digits" class="input" value="{{ series.number_digits }}" min="1" max="10">
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-6 mb-3">
+                                    <label class="flex items-center gap-2">
+                                        <label class="toggle color-success">
+                                            <input type="checkbox" name="is_active" {% if series.is_active %}checked{% endif %}>
+                                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                                        </label>
+                                        <span class="text-sm">{% trans "Active" %}</span>
+                                    </label>
+                                    <label class="flex items-center gap-2">
+                                        <label class="toggle color-primary">
+                                            <input type="checkbox" name="is_default" {% if series.is_default %}checked{% endif %}>
+                                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                                        </label>
+                                        <span class="text-sm">{% trans "Default" %}</span>
+                                    </label>
+                                </div>
+                                <div class="flex justify-end gap-2">
+                                    <button type="button" class="btn btn-ghost btn-sm" @click="editing = false">
+                                        {% trans "Cancel" %}
+                                    </button>
+                                    <button type="submit" class="btn btn-sm color-primary">
+                                        {% icon "save-outline" %}
+                                        {% trans "Save" %}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </template>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center p-8">
+            {% icon "layers-outline" css_class="text-5xl block mx-auto mb-3 text-base-content/30" %}
+            <h3 class="text-lg font-medium mb-1">{% trans "No series yet" %}</h3>
+            <p class="text-sm text-base-content/60 mb-4">{% trans "Create your first numbering series to start generating quote numbers." %}</p>
+            <button class="btn color-primary" @click="addOpen = true">
+                {% icon "add-outline" %}
+                {% trans "Create First Series" %}
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="p-4 rounded-xl bg-primary/5 flex items-start gap-3 mt-4">
+        {% icon "information-circle-outline" css_class="text-xl text-primary mt-0.5 shrink-0" %}
+        <p class="text-sm text-base-content/60">
+            {% trans "Each series has its own numbering sequence. For example, QT for standard quotes, PR for proposals, BU for budgets. The prefix and number are combined when a quote is sent." %}
+        </p>
+    </div>
+</div>

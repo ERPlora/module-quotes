@@ -1,0 +1,168 @@
+{% load djicons i18n %}
+
+<div class="p-4">
+    <!-- Quote Defaults -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title">{% icon "settings-outline" css_class="text-primary" %} {% trans "Quote Defaults" %}</h3>
+            <p class="text-sm text-base-content/60">{% trans "Default values applied to new quotes" %}</p>
+        </div>
+        <div class="list">
+            <div class="list-item">
+                <div class="list-item-content">
+                    <div class="list-item-label">{% trans "Default Validity (days)" %}</div>
+                    <div class="list-item-note">{% trans "How many days quotes are valid by default" %}</div>
+                </div>
+                <div class="list-item-end">
+                    <input type="number" name="default_validity_days"
+                           value="{{ settings.default_validity_days }}"
+                           class="input input-sm"
+                           style="width: 100px;"
+                           min="1" max="365"
+                           hx-post="{% url 'quotes:settings_save' %}"
+                           hx-vals='js:{field: "default_validity_days", value: event.target.value}'
+                           hx-trigger="change"
+                           hx-swap="none">
+                </div>
+            </div>
+            <div class="list-item">
+                <div class="list-item-content">
+                    <div class="list-item-label">{% trans "Default Series" %}</div>
+                    <div class="list-item-note">{% trans "Series used for new quotes" %}</div>
+                </div>
+                <div class="list-item-end">
+                    <select name="default_series"
+                            class="select select-sm"
+                            style="width: 180px;"
+                            hx-post="{% url 'quotes:settings_save' %}"
+                            hx-vals='js:{field: "default_series", value: event.target.value}'
+                            hx-trigger="change"
+                            hx-swap="none">
+                        <option value="">{% trans "None" %}</option>
+                        {% for s in series_list %}
+                        <option value="{{ s.id }}" {% if settings.default_series_id == s.id %}selected{% endif %}>
+                            {{ s.prefix }} - {{ s.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="list-item">
+                <div class="list-item-content">
+                    <div class="list-item-label">{% trans "Default Tax Rate %" %}</div>
+                    <div class="list-item-note">{% trans "Tax rate applied to new quotes" %}</div>
+                </div>
+                <div class="list-item-end">
+                    <input type="number" name="tax_rate"
+                           value="{{ settings.tax_rate }}"
+                           class="input input-sm"
+                           style="width: 100px;"
+                           step="0.01" min="0"
+                           hx-post="{% url 'quotes:settings_save' %}"
+                           hx-vals='js:{field: "tax_rate", value: event.target.value}'
+                           hx-trigger="change"
+                           hx-swap="none">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Display Options -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title">{% icon "eye-outline" css_class="text-success" %} {% trans "Display Options" %}</h3>
+        </div>
+        <div class="list">
+            <div class="list-item">
+                <div class="list-item-content">
+                    <div class="list-item-label">{% trans "Show Tax" %}</div>
+                    <div class="list-item-note">{% trans "Show tax breakdown on quotes" %}</div>
+                </div>
+                <div class="list-item-end">
+                    <label class="toggle color-success">
+                        <input type="checkbox" name="show_tax"
+                               {% if settings.show_tax %}checked{% endif %}
+                               hx-post="{% url 'quotes:settings_save' %}"
+                               hx-vals='js:{field: "show_tax"}'
+                               hx-swap="none">
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
+                </div>
+            </div>
+            <div class="list-item">
+                <div class="list-item-content">
+                    <div class="list-item-label">{% trans "Show Discount" %}</div>
+                    <div class="list-item-note">{% trans "Show discount column on quotes" %}</div>
+                </div>
+                <div class="list-item-end">
+                    <label class="toggle color-success">
+                        <input type="checkbox" name="show_discount"
+                               {% if settings.show_discount %}checked{% endif %}
+                               hx-post="{% url 'quotes:settings_save' %}"
+                               hx-vals='js:{field: "show_discount"}'
+                               hx-swap="none">
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Default Notes -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title">{% icon "chatbox-outline" css_class="text-warning" %} {% trans "Default Notes" %}</h3>
+            <p class="text-sm text-base-content/60">{% trans "Notes automatically added to new quotes" %}</p>
+        </div>
+        <div class="card-body">
+            <textarea name="default_notes"
+                class="textarea"
+                rows="3"
+                placeholder="{% trans 'Default notes for new quotes...' %}"
+                hx-post="{% url 'quotes:settings_save' %}"
+                hx-vals='js:{field: "default_notes", value: event.target.value}'
+                hx-trigger="change"
+                hx-swap="none">{{ settings.default_notes }}</textarea>
+        </div>
+    </div>
+
+    <!-- Default Terms -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title">{% icon "document-text-outline" css_class="text-warning" %} {% trans "Default Terms & Conditions" %}</h3>
+            <p class="text-sm text-base-content/60">{% trans "Terms automatically added to new quotes" %}</p>
+        </div>
+        <div class="card-body">
+            <textarea name="default_terms"
+                class="textarea"
+                rows="4"
+                placeholder="{% trans 'Default terms and conditions...' %}"
+                hx-post="{% url 'quotes:settings_save' %}"
+                hx-vals='js:{field: "default_terms", value: event.target.value}'
+                hx-trigger="change"
+                hx-swap="none">{{ settings.default_terms }}</textarea>
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">{% icon "link-outline" %} {% trans "Quick Actions" %}</h3>
+        </div>
+        <div class="list">
+            <a hx-get="{% url 'quotes:series' %}"
+               hx-target="#main-content-area"
+               hx-push-url="true"
+               class="list-item list-item-clickable">
+                <div class="list-item-start">{% icon "layers-outline" css_class="text-primary" %}</div>
+                <div class="list-item-content">
+                    <div class="list-item-label">{% trans "Quote Series" %}</div>
+                    <div class="list-item-note">{% trans "Manage numbering sequences" %}</div>
+                </div>
+                <div class="list-item-end">
+                    <span class="list-item-chevron"></span>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>

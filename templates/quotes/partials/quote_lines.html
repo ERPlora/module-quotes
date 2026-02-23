@@ -1,0 +1,149 @@
+{% load djicons i18n %}
+
+<div class="overflow-x-auto">
+    <table class="w-full">
+        <thead>
+            <tr class="bg-base-200/50">
+                <th class="p-3 text-left text-sm font-medium">{% trans "Description" %}</th>
+                <th class="p-3 text-center text-sm font-medium">{% trans "Type" %}</th>
+                <th class="p-3 text-right text-sm font-medium">{% trans "Qty" %}</th>
+                <th class="p-3 text-right text-sm font-medium">{% trans "Price" %}</th>
+                <th class="p-3 text-right text-sm font-medium">{% trans "Disc." %}</th>
+                <th class="p-3 text-right text-sm font-medium">{% trans "Total" %}</th>
+                {% if quote.status == 'draft' or quote.status == 'sent' %}
+                <th class="p-3 text-center text-sm font-medium w-16">{% trans "Actions" %}</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in lines %}
+            <tr class="border-b border-base-200" x-data="{ editing: false }">
+                <!-- View Mode -->
+                <template x-if="!editing">
+                    <td class="p-3" colspan="{% if quote.status == 'draft' or quote.status == 'sent' %}7{% else %}6{% endif %}">
+                        <div class="grid" style="grid-template-columns: 1fr auto auto auto auto auto {% if quote.status == 'draft' or quote.status == 'sent' %}auto{% endif %}; align-items: center;">
+                            <div>
+                                <div class="font-medium">{{ line.description }}</div>
+                            </div>
+                            <div class="text-center px-3">
+                                <span class="badge badge-sm">{{ line.get_line_type_display }}</span>
+                            </div>
+                            <div class="text-right px-3">{{ line.quantity }}</div>
+                            <div class="text-right px-3">{{ line.unit_price|floatformat:2 }}</div>
+                            <div class="text-right px-3">
+                                {% if line.discount_percent %}{{ line.discount_percent }}%{% else %}-{% endif %}
+                            </div>
+                            <div class="text-right px-3 font-medium">{{ line.total|floatformat:2 }}</div>
+                            {% if quote.status == 'draft' or quote.status == 'sent' %}
+                            <div class="text-center px-3">
+                                <div class="flex gap-1 justify-center">
+                                    <button type="button" class="btn btn-ghost btn-sm btn-circle"
+                                            @click="editing = true" title="{% trans 'Edit' %}">
+                                        {% icon "create-outline" css_class="text-sm" %}
+                                    </button>
+                                    <button type="button" class="btn btn-ghost btn-sm btn-circle text-error"
+                                            hx-post="{% url 'quotes:line_delete' quote.id line.id %}"
+                                            hx-target="#quote-lines-body"
+                                            hx-swap="innerHTML"
+                                            hx-confirm="{% trans 'Delete this line item?' %}"
+                                            title="{% trans 'Delete' %}">
+                                        {% icon "trash-outline" css_class="text-sm" %}
+                                    </button>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </td>
+                </template>
+
+                <!-- Edit Mode (inline) -->
+                <template x-if="editing">
+                    <td class="p-3" colspan="{% if quote.status == 'draft' or quote.status == 'sent' %}7{% else %}6{% endif %}">
+                        <form hx-post="{% url 'quotes:line_edit' quote.id line.id %}"
+                              hx-target="#quote-lines-body"
+                              hx-swap="innerHTML">
+                            {% csrf_token %}
+                            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                                <div class="form-group col-span-2">
+                                    <label class="form-group-label">{% trans "Description" %}</label>
+                                    <input type="text" name="description" class="input" value="{{ line.description }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-group-label">{% trans "Type" %}</label>
+                                    <select name="line_type" class="select">
+                                        <option value="custom" {% if line.line_type == 'custom' %}selected{% endif %}>{% trans "Custom" %}</option>
+                                        <option value="product" {% if line.line_type == 'product' %}selected{% endif %}>{% trans "Product" %}</option>
+                                        <option value="service" {% if line.line_type == 'service' %}selected{% endif %}>{% trans "Service" %}</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-group-label">{% trans "Quantity" %}</label>
+                                    <input type="number" name="quantity" class="input" value="{{ line.quantity }}" step="0.001" min="0.001">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-group-label">{% trans "Unit Price" %}</label>
+                                    <input type="number" name="unit_price" class="input" value="{{ line.unit_price }}" step="0.01" min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-group-label">{% trans "Discount %" %}</label>
+                                    <input type="number" name="discount_percent" class="input" value="{{ line.discount_percent }}" step="0.01" min="0" max="100">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-group-label">{% trans "Tax Rate %" %}</label>
+                                    <input type="number" name="tax_rate" class="input" value="{{ line.tax_rate }}" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <input type="hidden" name="sort_order" value="{{ line.sort_order }}">
+                            <div class="flex justify-end gap-2">
+                                <button type="button" class="btn btn-ghost btn-sm" @click="editing = false">
+                                    {% trans "Cancel" %}
+                                </button>
+                                <button type="submit" class="btn btn-sm color-primary">
+                                    {% icon "save-outline" %}
+                                    {% trans "Save" %}
+                                </button>
+                            </div>
+                        </form>
+                    </td>
+                </template>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{% if quote.status == 'draft' or quote.status == 'sent' %}7{% else %}6{% endif %}" class="p-6 text-center text-base-content/60">
+                    {% icon "document-text-outline" css_class="text-3xl block mx-auto mb-2" %}
+                    {% trans "No items yet. Add your first line item above." %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if lines %}
+<!-- Inline Totals -->
+<div class="p-4 bg-base-200/30 border-t border-base-200">
+    <div class="flex justify-end">
+        <div class="w-64 space-y-2">
+            <div class="flex justify-between text-sm">
+                <span class="text-base-content/60">{% trans "Lines Subtotal" %}</span>
+                <span class="font-medium">{{ quote.subtotal|floatformat:2 }}</span>
+            </div>
+            {% if quote.discount_amount %}
+            <div class="flex justify-between text-sm">
+                <span class="text-base-content/60">{% trans "Discount" %}</span>
+                <span class="text-error">-{{ quote.discount_amount|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+            <div class="flex justify-between text-sm">
+                <span class="text-base-content/60">{% trans "Tax" %} ({{ quote.tax_rate }}%)</span>
+                <span>{{ quote.tax_amount|floatformat:2 }}</span>
+            </div>
+            <hr class="border-base-300">
+            <div class="flex justify-between font-bold">
+                <span>{% trans "Total" %}</span>
+                <span>{{ quote.total|floatformat:2 }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
