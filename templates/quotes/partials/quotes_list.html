@@ -1,112 +1,84 @@
 {% load djicons i18n %}
 
 {% if quotes %}
-
-<!-- Table View -->
 <div class="datatable-body">
     <table class="datatable-table">
         <thead class="datatable-thead">
             <tr>
                 <th class="datatable-th datatable-th-checkbox">
                     <label class="checkbox checkbox-sm">
-                        <input type="checkbox"
-                               :checked="selectAll"
-                               @click="toggleAll([{% for q in quotes %}'{{ q.id }}'{% if not forloop.last %},{% endif %}{% endfor %}])">
+                        <input type="checkbox" :checked="selectAll" @click="toggleAll([{% for item in quotes %}'{{ item.id }}'{% if not forloop.last %},{% endif %}{% endfor %}])">
                         <span class="checkbox-mark"></span>
                     </label>
                 </th>
-                <th class="datatable-th datatable-th-sortable{% if sort_field == 'number' %} datatable-th-sorted{% if sort_dir == 'desc' %} datatable-th-sorted-desc{% endif %}{% endif %}"
-                    hx-get="{% url 'quotes:list' %}?sort=number&dir={% if sort_field == 'number' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
-                    hx-target="#datatable-body"
-                    hx-include="#quotes-datatable"
-                    style="cursor: pointer;">
-                    {% trans "Number" %}
+                <th class="datatable-th datatable-th-sortable{% if sort_field == 'title' %} datatable-th-sorted{% if sort_dir == 'desc' %} datatable-th-sorted-desc{% endif %}{% endif %}"
+                    hx-get="{% url 'quotes:quotes_list' %}?sort=title&dir={% if sort_field == 'title' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                    hx-target="#datatable-body" hx-include="#quotes-datatable" style="cursor: pointer;">
+                    {% trans "Title" %}
+                    <span class="datatable-sort-icon">{% icon "chevron-up-outline" %}</span>
+                </th>
+                <th class="datatable-th datatable-th-sortable{% if sort_field == 'quote_number' %} datatable-th-sorted{% if sort_dir == 'desc' %} datatable-th-sorted-desc{% endif %}{% endif %}"
+                    hx-get="{% url 'quotes:quotes_list' %}?sort=quote_number&dir={% if sort_field == 'quote_number' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                    hx-target="#datatable-body" hx-include="#quotes-datatable" style="cursor: pointer;">
+                    {% trans "Quote Number" %}
+                    <span class="datatable-sort-icon">{% icon "chevron-up-outline" %}</span>
+                </th>
+                <th class="datatable-th datatable-th-sortable{% if sort_field == 'series' %} datatable-th-sorted{% if sort_dir == 'desc' %} datatable-th-sorted-desc{% endif %}{% endif %}"
+                    hx-get="{% url 'quotes:quotes_list' %}?sort=series&dir={% if sort_field == 'series' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                    hx-target="#datatable-body" hx-include="#quotes-datatable" style="cursor: pointer;">
+                    {% trans "Name(id='QuoteSeries', ctx=Load())" %}
                     <span class="datatable-sort-icon">{% icon "chevron-up-outline" %}</span>
                 </th>
                 <th class="datatable-th datatable-th-sortable{% if sort_field == 'customer' %} datatable-th-sorted{% if sort_dir == 'desc' %} datatable-th-sorted-desc{% endif %}{% endif %}"
-                    hx-get="{% url 'quotes:list' %}?sort=customer&dir={% if sort_field == 'customer' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
-                    hx-target="#datatable-body"
-                    hx-include="#quotes-datatable"
-                    style="cursor: pointer;">
-                    {% trans "Customer" %}
+                    hx-get="{% url 'quotes:quotes_list' %}?sort=customer&dir={% if sort_field == 'customer' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                    hx-target="#datatable-body" hx-include="#quotes-datatable" style="cursor: pointer;">
+                    {% trans "customers.Customer" %}
                     <span class="datatable-sort-icon">{% icon "chevron-up-outline" %}</span>
                 </th>
-                <th class="datatable-th">{% trans "Title" %}</th>
+                <th class="datatable-th datatable-th-sortable{% if sort_field == 'status' %} datatable-th-sorted{% if sort_dir == 'desc' %} datatable-th-sorted-desc{% endif %}{% endif %}"
+                    hx-get="{% url 'quotes:quotes_list' %}?sort=status&dir={% if sort_field == 'status' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                    hx-target="#datatable-body" hx-include="#quotes-datatable" style="cursor: pointer;">
+                    {% trans "Status" %}
+                    <span class="datatable-sort-icon">{% icon "chevron-up-outline" %}</span>
+                </th>
                 <th class="datatable-th datatable-th-sortable{% if sort_field == 'total' %} datatable-th-sorted{% if sort_dir == 'desc' %} datatable-th-sorted-desc{% endif %}{% endif %}"
-                    hx-get="{% url 'quotes:list' %}?sort=total&dir={% if sort_field == 'total' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
-                    hx-target="#datatable-body"
-                    hx-include="#quotes-datatable"
-                    style="cursor: pointer;">
+                    hx-get="{% url 'quotes:quotes_list' %}?sort=total&dir={% if sort_field == 'total' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                    hx-target="#datatable-body" hx-include="#quotes-datatable" style="cursor: pointer;">
                     {% trans "Total" %}
-                    <span class="datatable-sort-icon">{% icon "chevron-up-outline" %}</span>
-                </th>
-                <th class="datatable-th datatable-th-center">{% trans "Status" %}</th>
-                <th class="datatable-th datatable-th-sortable{% if sort_field == 'valid' %} datatable-th-sorted{% if sort_dir == 'desc' %} datatable-th-sorted-desc{% endif %}{% endif %}"
-                    hx-get="{% url 'quotes:list' %}?sort=valid&dir={% if sort_field == 'valid' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
-                    hx-target="#datatable-body"
-                    hx-include="#quotes-datatable"
-                    style="cursor: pointer;">
-                    {% trans "Valid Until" %}
                     <span class="datatable-sort-icon">{% icon "chevron-up-outline" %}</span>
                 </th>
                 <th class="datatable-th datatable-th-actions">{% trans "Actions" %}</th>
             </tr>
         </thead>
         <tbody class="datatable-tbody">
-            {% for quote in quotes %}
-            <tr class="datatable-tr"
-                data-id="{{ quote.id }}"
-                :class="{ 'datatable-tr-selected': selectedIds.includes('{{ quote.id }}') }">
+            {% for item in quotes %}
+            <tr class="datatable-tr" data-id="{{ item.id }}" :class="{ 'datatable-tr-selected': selectedIds.includes('{{ item.id }}') }">
                 <td class="datatable-td datatable-td-checkbox" onclick="event.stopPropagation();">
                     <label class="checkbox checkbox-sm">
-                        <input type="checkbox"
-                               :checked="selectedIds.includes('{{ quote.id }}')"
-                               @click="toggleSelect('{{ quote.id }}')">
+                        <input type="checkbox" :checked="selectedIds.includes('{{ item.id }}')" @click="toggleSelect('{{ item.id }}')">
                         <span class="checkbox-mark"></span>
                     </label>
                 </td>
-                <td class="datatable-td" data-label="{% trans 'Number' %}">
-                    <span class="font-medium">{{ quote.quote_number|default:"Draft" }}</span>
+                <td class="datatable-td">
+                    <span class="font-medium cursor-pointer" @click="openPanel('{% url 'quotes:quote_edit' item.id %}')">{{ item.title }}</span>
                 </td>
-                <td class="datatable-td" data-label="{% trans 'Customer' %}">
-                    <span class="font-medium">{{ quote.customer_name }}</span>
+                <td class="datatable-td">{{ item.quote_number }}</td>
+                <td class="datatable-td">{{ item.series }}</td>
+                <td class="datatable-td">{{ item.customer }}</td>
+                <td class="datatable-td">
+                    <span class="badge badge-sm">{{ item.status }}</span>
                 </td>
-                <td class="datatable-td" data-label="{% trans 'Title' %}">
-                    <span class="text-base-content/80">{{ quote.title|default:"-"|truncatechars:40 }}</span>
-                </td>
-                <td class="datatable-td" data-label="{% trans 'Total' %}">
-                    <span class="font-medium">{{ quote.total|floatformat:2 }}</span>
-                </td>
-                <td class="datatable-td datatable-td-center" data-label="{% trans 'Status' %}">
-                    <span class="badge badge-sm {% if quote.status == 'accepted' %}color-success{% elif quote.status == 'sent' %}color-primary{% elif quote.status == 'rejected' %}color-error{% elif quote.status == 'expired' %}color-warning{% elif quote.status == 'converted' %}color-primary{% endif %}">
-                        {{ quote.get_status_display }}
-                    </span>
-                </td>
-                <td class="datatable-td" data-label="{% trans 'Valid Until' %}">
-                    {% if quote.valid_until %}
-                    <span class="text-base-content/60{% if quote.is_expired %} text-error{% endif %}">
-                        {{ quote.valid_until|date:"M d, Y" }}
-                    </span>
-                    {% else %}
-                    <span class="text-base-content/40">-</span>
-                    {% endif %}
-                </td>
+                <td class="datatable-td"><span class="font-medium">{{ item.total }}</span></td>
                 <td class="datatable-td datatable-td-actions" onclick="event.stopPropagation();">
                     <div class="datatable-row-actions">
-                        <a class="datatable-row-action"
-                           hx-get="{% url 'quotes:detail' quote.id %}"
-                           hx-target="#main-content-area"
-                           hx-push-url="true"
-                           title="{% trans 'View' %}">
-                            {% icon "eye-outline" %}
-                        </a>
-                        {% if quote.status == 'draft' %}
+                        <button class="datatable-row-action" @click="openPanel('{% url 'quotes:quote_edit' item.id %}')" title="{% trans 'Edit' %}">
+                            {% icon "create-outline" %}
+                        </button>
                         <button class="datatable-row-action datatable-row-action-danger"
-                                @click="deleteTarget = { id: '{{ quote.id }}', name: '{{ quote.quote_number|default:"Draft"|escapejs }}', url: '{% url 'quotes:delete' quote.id %}' }; deleteConfirm = true"
+                                @click="deleteTarget = { id: '{{ item.id }}', name: '{{ item.title }}', url: '{% url 'quotes:quote_delete' item.id %}' }; deleteConfirm = true"
                                 title="{% trans 'Delete' %}">
                             {% icon "trash-outline" %}
                         </button>
-                        {% endif %}
                     </div>
                 </td>
             </tr>
@@ -115,15 +87,10 @@
     </table>
 </div>
 
-<!-- Footer / Pagination -->
 <div class="datatable-footer">
     <div class="datatable-per-page">
         {% trans "Show" %}
-        <select name="per_page"
-                hx-get="{% url 'quotes:list' %}"
-                hx-target="#datatable-body"
-                hx-include="#quotes-datatable"
-                hx-trigger="change">
+        <select name="per_page" hx-get="{% url 'quotes:quotes_list' %}" hx-target="#datatable-body" hx-include="#quotes-datatable" hx-trigger="change">
             <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
             <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
             <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
@@ -133,33 +100,18 @@
     </div>
     <span class="datatable-info">
         {% if page_obj.paginator.count > 0 %}
-        {% blocktrans with start=page_obj.start_index end=page_obj.end_index total=page_obj.paginator.count %}Showing {{ start }}-{{ end }} of {{ total }} quotes{% endblocktrans %}
+        {% blocktrans with start=page_obj.start_index end=page_obj.end_index total=page_obj.paginator.count %}Showing {{ start }}-{{ end }} of {{ total }}{% endblocktrans %}
         {% endif %}
     </span>
     {% if page_obj.paginator.num_pages > 1 %}
     <nav class="pagination pagination-sm">
-        <button class="pagination-btn pagination-prev"
-                {% if page_obj.has_previous %}
-                hx-get="{% url 'quotes:list' %}?page={{ page_obj.previous_page_number }}"
-                hx-target="#datatable-body"
-                hx-include="#quotes-datatable"
-                {% else %}disabled{% endif %}>
+        <button class="pagination-btn pagination-prev" {% if page_obj.has_previous %}hx-get="{% url 'quotes:quotes_list' %}?page={{ page_obj.previous_page_number }}" hx-target="#datatable-body" hx-include="#quotes-datatable"{% else %}disabled{% endif %}>
             {% icon "chevron-back-outline" %}
         </button>
         {% for num in page_obj.paginator.page_range %}
-        <button class="pagination-btn{% if num == page_obj.number %} pagination-active{% endif %}"
-                hx-get="{% url 'quotes:list' %}?page={{ num }}"
-                hx-target="#datatable-body"
-                hx-include="#quotes-datatable">
-            {{ num }}
-        </button>
+        <button class="pagination-btn{% if num == page_obj.number %} pagination-active{% endif %}" hx-get="{% url 'quotes:quotes_list' %}?page={{ num }}" hx-target="#datatable-body" hx-include="#quotes-datatable">{{ num }}</button>
         {% endfor %}
-        <button class="pagination-btn pagination-next"
-                {% if page_obj.has_next %}
-                hx-get="{% url 'quotes:list' %}?page={{ page_obj.next_page_number }}"
-                hx-target="#datatable-body"
-                hx-include="#quotes-datatable"
-                {% else %}disabled{% endif %}>
+        <button class="pagination-btn pagination-next" {% if page_obj.has_next %}hx-get="{% url 'quotes:quotes_list' %}?page={{ page_obj.next_page_number }}" hx-target="#datatable-body" hx-include="#quotes-datatable"{% else %}disabled{% endif %}>
             {% icon "chevron-forward-outline" %}
         </button>
     </nav>
@@ -167,37 +119,12 @@
 </div>
 
 {% else %}
-<!-- Empty State -->
 <div class="datatable-empty">
-    <div class="datatable-empty-icon">
-        {% if search or status_filter or series_filter %}
-        {% icon "search-outline" %}
-        {% else %}
-        {% icon "document-text-outline" %}
-        {% endif %}
-    </div>
-    <div class="datatable-empty-title">
-        {% if search or status_filter or series_filter %}
-        {% trans "No quotes found" %}
-        {% else %}
-        {% trans "No quotes yet" %}
-        {% endif %}
-    </div>
-    <div class="datatable-empty-text">
-        {% if search or status_filter or series_filter %}
-        {% trans "Try a different search term or filter" %}
-        {% else %}
-        {% trans "Create your first quote to get started" %}
-        {% endif %}
-    </div>
-    {% if not search and not status_filter and not series_filter %}
-    <button class="btn color-primary mt-4"
-            hx-get="{% url 'quotes:add' %}"
-            hx-target="#main-content-area"
-            hx-push-url="true">
-        {% icon "add-outline" %}
-        {% trans "Create First Quote" %}
+    <div class="datatable-empty-icon">{% icon "cube-outline" %}</div>
+    <div class="datatable-empty-title">{% trans "No items yet" %}</div>
+    <div class="datatable-empty-text">{% trans "Add your first item to get started" %}</div>
+    <button class="btn color-primary mt-4" @click="openPanel('{% url 'quotes:quote_add' %}')">
+        {% icon "add-outline" %} {% trans "Add" %}
     </button>
-    {% endif %}
 </div>
 {% endif %}

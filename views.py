@@ -1,849 +1,393 @@
-"""Quotes views."""
-
-from datetime import date, timedelta
-from decimal import Decimal
-
+"""
+Quotes Module Views
+"""
 from django.core.paginator import Paginator
-from django.http import JsonResponse
-from django.shortcuts import render as django_render
-from django.views.decorators.http import require_POST
-from django.db.models import Q, Sum, Count
-from django.utils.translation import gettext as _
+from django.db.models import Q, Count
+from django.shortcuts import get_object_or_404, render as django_render
 from django.utils import timezone
-from django.contrib import messages
+from django.utils.translation import gettext_lazy as _
+from django.views.decorators.http import require_POST
 
 from apps.accounts.decorators import login_required
-from apps.core.htmx import htmx_view, htmx_redirect
+from apps.core.htmx import htmx_view
+from apps.core.services import export_to_csv, export_to_excel
 from apps.modules_runtime.navigation import with_module_nav
 
 from .models import QuoteSeries, QuoteSettings, Quote, QuoteLine
-from .forms import QuoteSeriesForm, QuoteForm, QuoteLineForm, QuoteSettingsForm
-
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
 
 PER_PAGE_CHOICES = [10, 25, 50, 100]
 
-QUOTE_SORT_FIELDS = {
-    'number': 'quote_number',
-    'customer': 'customer_name',
-    'total': 'total',
-    'date': 'created_at',
-    'valid': 'valid_until',
-}
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _hub(request):
-    return request.session.get('hub_id')
-
-
-def _employee(request):
-    from apps.accounts.models import LocalUser
-    uid = request.session.get('local_user_id')
-    if uid:
-        return LocalUser.objects.filter(pk=uid).first()
-    return None
-
-
-def _render_quotes_list(request, hub):
-    """Re-render the quotes table partial after a mutation."""
-    quotes = Quote.objects.filter(hub_id=hub, is_deleted=False).order_by('-created_at')
-    paginator = Paginator(quotes, 10)
-    page_obj = paginator.get_page(1)
-    return django_render(request, 'quotes/partials/quotes_list.html', {
-        'quotes': page_obj,
-        'page_obj': page_obj,
-        'search': '',
-        'sort_field': 'date',
-        'sort_dir': 'desc',
-        'status_filter': '',
-        'series_filter': '',
-        'per_page': 10,
-    })
-
-
-def _render_series_list(request, hub):
-    """Re-render the series table partial after a mutation."""
-    series = QuoteSeries.objects.filter(
-        hub_id=hub, is_deleted=False,
-    ).annotate(
-        quote_count=Count(
-            'quote', filter=Q(quote__is_deleted=False),
-        ),
-    ).order_by('prefix')
-    return django_render(request, 'quotes/partials/series_content.html', {
-        'series_list': series,
-    })
-
-
-# ---------------------------------------------------------------------------
+# ======================================================================
 # Dashboard
-# ---------------------------------------------------------------------------
+# ======================================================================
 
 @login_required
 @with_module_nav('quotes', 'dashboard')
-@htmx_view('quotes/pages/dashboard.html', 'quotes/partials/dashboard_content.html')
+@htmx_view('quotes/pages/index.html', 'quotes/partials/dashboard_content.html')
 def dashboard(request):
-    hub = _hub(request)
-    quotes = Quote.objects.filter(hub_id=hub, is_deleted=False)
-
-    now = timezone.now()
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-    # Monthly stats
-    monthly_qs = quotes.filter(created_at__gte=month_start)
-    monthly_total = monthly_qs.count()
-
-    # Sent & awaiting
-    sent_count = quotes.filter(status='sent').count()
-
-    # Accepted
-    accepted_qs = quotes.filter(status='accepted')
-    accepted_count = accepted_qs.count()
-    accepted_value = accepted_qs.aggregate(
-        total=Sum('total'),
-    )['total'] or Decimal('0.00')
-
-    # Rejected
-    rejected_count = quotes.filter(status='rejected').count()
-
-    # Acceptance rate
-    decided = accepted_count + rejected_count
-    acceptance_rate = round((accepted_count / decided * 100), 1) if decided > 0 else 0
-
-    # Expiring soon (next 7 days)
-    today = date.today()
-    expiring_soon = quotes.filter(
-        status='sent',
-        valid_until__gte=today,
-        valid_until__lte=today + timedelta(days=7),
-    ).count()
-
-    # Draft count
-    draft_count = quotes.filter(status='draft').count()
-
-    # Converted count
-    converted_count = quotes.filter(status='converted').count()
-
-    # Recent quotes
-    recent_quotes = quotes.order_by('-created_at')[:10]
-
+    hub_id = request.session.get('hub_id')
     return {
-        'monthly_total': monthly_total,
-        'sent_count': sent_count,
-        'accepted_count': accepted_count,
-        'accepted_value': accepted_value,
-        'rejected_count': rejected_count,
-        'acceptance_rate': acceptance_rate,
-        'expiring_soon': expiring_soon,
-        'draft_count': draft_count,
-        'converted_count': converted_count,
-        'recent_quotes': recent_quotes,
+        'total_quote_serieses': QuoteSeries.objects.filter(hub_id=hub_id, is_deleted=False).count(),
+        'total_quotes': Quote.objects.filter(hub_id=hub_id, is_deleted=False).count(),
     }
 
 
-# ---------------------------------------------------------------------------
-# Quotes List
-# ---------------------------------------------------------------------------
+# ======================================================================
+# QuoteSeries
+# ======================================================================
+
+QUOTE_SERIES_SORT_FIELDS = {
+    'name': 'name',
+    'is_default': 'is_default',
+    'is_active': 'is_active',
+    'next_number': 'next_number',
+    'prefix': 'prefix',
+    'number_digits': 'number_digits',
+    'created_at': 'created_at',
+}
+
+def _build_quote_serieses_context(hub_id, per_page=10):
+    qs = QuoteSeries.objects.filter(hub_id=hub_id, is_deleted=False).order_by('name')
+    paginator = Paginator(qs, per_page)
+    page_obj = paginator.get_page(1)
+    return {
+        'quote_serieses': page_obj,
+        'page_obj': page_obj,
+        'search_query': '',
+        'sort_field': 'name',
+        'sort_dir': 'asc',
+        'current_view': 'table',
+        'per_page': per_page,
+    }
+
+def _render_quote_serieses_list(request, hub_id, per_page=10):
+    ctx = _build_quote_serieses_context(hub_id, per_page)
+    return django_render(request, 'quotes/partials/quote_serieses_list.html', ctx)
 
 @login_required
 @with_module_nav('quotes', 'list')
-@htmx_view('quotes/pages/list.html', 'quotes/partials/quotes_content.html')
-def quote_list(request):
-    hub = _hub(request)
-    qs = Quote.objects.filter(hub_id=hub, is_deleted=False)
+@htmx_view('quotes/pages/quote_serieses.html', 'quotes/partials/quote_serieses_content.html')
+def quote_serieses_list(request):
+    hub_id = request.session.get('hub_id')
+    search_query = request.GET.get('q', '').strip()
+    sort_field = request.GET.get('sort', 'name')
+    sort_dir = request.GET.get('dir', 'asc')
+    page_number = request.GET.get('page', 1)
+    current_view = request.GET.get('view', 'table')
+    per_page = int(request.GET.get('per_page', 10))
+    if per_page not in PER_PAGE_CHOICES:
+        per_page = 10
 
-    # --- Search ---
-    search = request.GET.get('q', '').strip()
-    if search:
-        qs = qs.filter(
-            Q(quote_number__icontains=search) |
-            Q(customer_name__icontains=search) |
-            Q(title__icontains=search)
-        )
+    qs = QuoteSeries.objects.filter(hub_id=hub_id, is_deleted=False)
 
-    # --- Filters ---
-    status_filter = request.GET.get('status', '')
-    if status_filter:
-        qs = qs.filter(status=status_filter)
+    if search_query:
+        qs = qs.filter(Q(name__icontains=search_query) | Q(prefix__icontains=search_query))
 
-    series_filter = request.GET.get('series', '')
-    if series_filter:
-        qs = qs.filter(series_id=series_filter)
-
-    # --- Sort ---
-    sort_field = request.GET.get('sort', 'date')
-    sort_dir = request.GET.get('dir', 'desc')
-    order_by = QUOTE_SORT_FIELDS.get(sort_field, 'created_at')
+    order_by = QUOTE_SERIES_SORT_FIELDS.get(sort_field, 'name')
     if sort_dir == 'desc':
         order_by = f'-{order_by}'
     qs = qs.order_by(order_by)
 
-    # --- Pagination ---
-    per_page = int(request.GET.get('per_page', 10))
-    if per_page not in PER_PAGE_CHOICES:
-        per_page = 10
-    page_number = request.GET.get('page', 1)
+    export_format = request.GET.get('export')
+    if export_format in ('csv', 'excel'):
+        fields = ['name', 'is_default', 'is_active', 'next_number', 'prefix', 'number_digits']
+        headers = ['Name', 'Default Series', 'Active', 'Next Number', 'Prefix', 'Number Digits']
+        if export_format == 'csv':
+            return export_to_csv(qs, fields=fields, headers=headers, filename='quote_serieses.csv')
+        return export_to_excel(qs, fields=fields, headers=headers, filename='quote_serieses.xlsx')
 
     paginator = Paginator(qs, per_page)
     page_obj = paginator.get_page(page_number)
 
-    # Series for filter dropdown
-    series_list = QuoteSeries.objects.filter(
-        hub_id=hub, is_deleted=False, is_active=True,
-    ).order_by('prefix')
+    if request.htmx and request.htmx.target == 'datatable-body':
+        return django_render(request, 'quotes/partials/quote_serieses_list.html', {
+            'quote_serieses': page_obj, 'page_obj': page_obj,
+            'search_query': search_query, 'sort_field': sort_field,
+            'sort_dir': sort_dir, 'current_view': current_view, 'per_page': per_page,
+        })
 
-    context = {
+    return {
+        'quote_serieses': page_obj, 'page_obj': page_obj,
+        'search_query': search_query, 'sort_field': sort_field,
+        'sort_dir': sort_dir, 'current_view': current_view, 'per_page': per_page,
+    }
+
+@login_required
+def quote_series_add(request):
+    hub_id = request.session.get('hub_id')
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        prefix = request.POST.get('prefix', '').strip()
+        next_number = int(request.POST.get('next_number', 0) or 0)
+        is_default = request.POST.get('is_default') == 'on'
+        is_active = request.POST.get('is_active') == 'on'
+        number_digits = request.POST.get('number_digits', '').strip()
+        obj = QuoteSeries(hub_id=hub_id)
+        obj.name = name
+        obj.prefix = prefix
+        obj.next_number = next_number
+        obj.is_default = is_default
+        obj.is_active = is_active
+        obj.number_digits = number_digits
+        obj.save()
+        return _render_quote_serieses_list(request, hub_id)
+    return django_render(request, 'quotes/partials/panel_quote_series_add.html', {})
+
+@login_required
+def quote_series_edit(request, pk):
+    hub_id = request.session.get('hub_id')
+    obj = get_object_or_404(QuoteSeries, pk=pk, hub_id=hub_id, is_deleted=False)
+    if request.method == 'POST':
+        obj.name = request.POST.get('name', '').strip()
+        obj.prefix = request.POST.get('prefix', '').strip()
+        obj.next_number = int(request.POST.get('next_number', 0) or 0)
+        obj.is_default = request.POST.get('is_default') == 'on'
+        obj.is_active = request.POST.get('is_active') == 'on'
+        obj.number_digits = request.POST.get('number_digits', '').strip()
+        obj.save()
+        return _render_quote_serieses_list(request, hub_id)
+    return django_render(request, 'quotes/partials/panel_quote_series_edit.html', {'obj': obj})
+
+@login_required
+@require_POST
+def quote_series_delete(request, pk):
+    hub_id = request.session.get('hub_id')
+    obj = get_object_or_404(QuoteSeries, pk=pk, hub_id=hub_id, is_deleted=False)
+    obj.is_deleted = True
+    obj.deleted_at = timezone.now()
+    obj.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
+    return _render_quote_serieses_list(request, hub_id)
+
+@login_required
+@require_POST
+def quote_series_toggle_status(request, pk):
+    hub_id = request.session.get('hub_id')
+    obj = get_object_or_404(QuoteSeries, pk=pk, hub_id=hub_id, is_deleted=False)
+    obj.is_active = not obj.is_active
+    obj.save(update_fields=['is_active', 'updated_at'])
+    return _render_quote_serieses_list(request, hub_id)
+
+@login_required
+@require_POST
+def quote_serieses_bulk_action(request):
+    hub_id = request.session.get('hub_id')
+    ids = [i.strip() for i in request.POST.get('ids', '').split(',') if i.strip()]
+    action = request.POST.get('action', '')
+    qs = QuoteSeries.objects.filter(hub_id=hub_id, is_deleted=False, id__in=ids)
+    if action == 'activate':
+        qs.update(is_active=True)
+    elif action == 'deactivate':
+        qs.update(is_active=False)
+    elif action == 'delete':
+        qs.update(is_deleted=True, deleted_at=timezone.now())
+    return _render_quote_serieses_list(request, hub_id)
+
+
+# ======================================================================
+# Quote
+# ======================================================================
+
+QUOTE_SORT_FIELDS = {
+    'title': 'title',
+    'quote_number': 'quote_number',
+    'series': 'series',
+    'customer': 'customer',
+    'status': 'status',
+    'total': 'total',
+    'created_at': 'created_at',
+}
+
+def _build_quotes_context(hub_id, per_page=10):
+    qs = Quote.objects.filter(hub_id=hub_id, is_deleted=False).order_by('title')
+    paginator = Paginator(qs, per_page)
+    page_obj = paginator.get_page(1)
+    return {
         'quotes': page_obj,
         'page_obj': page_obj,
-        'search': search,
-        'sort_field': sort_field,
-        'sort_dir': sort_dir,
-        'status_filter': status_filter,
-        'series_filter': series_filter,
-        'series_list': series_list,
+        'search_query': '',
+        'sort_field': 'title',
+        'sort_dir': 'asc',
+        'current_view': 'table',
         'per_page': per_page,
     }
 
-    # HTMX partial: swap only datatable body
-    if request.headers.get('HX-Request') and request.headers.get('HX-Target') == 'datatable-body':
-        return django_render(request, 'quotes/partials/quotes_list.html', context)
-
-    return context
-
-
-# ---------------------------------------------------------------------------
-# Quote Add
-# ---------------------------------------------------------------------------
+def _render_quotes_list(request, hub_id, per_page=10):
+    ctx = _build_quotes_context(hub_id, per_page)
+    return django_render(request, 'quotes/partials/quotes_list.html', ctx)
 
 @login_required
 @with_module_nav('quotes', 'list')
-@htmx_view('quotes/pages/list.html', 'quotes/partials/panel_quote_add.html')
+@htmx_view('quotes/pages/quotes.html', 'quotes/partials/quotes_content.html')
+def quotes_list(request):
+    hub_id = request.session.get('hub_id')
+    search_query = request.GET.get('q', '').strip()
+    sort_field = request.GET.get('sort', 'title')
+    sort_dir = request.GET.get('dir', 'asc')
+    page_number = request.GET.get('page', 1)
+    current_view = request.GET.get('view', 'table')
+    per_page = int(request.GET.get('per_page', 10))
+    if per_page not in PER_PAGE_CHOICES:
+        per_page = 10
+
+    qs = Quote.objects.filter(hub_id=hub_id, is_deleted=False)
+
+    if search_query:
+        qs = qs.filter(Q(quote_number__icontains=search_query) | Q(title__icontains=search_query) | Q(customer_name__icontains=search_query) | Q(customer_email__icontains=search_query))
+
+    order_by = QUOTE_SORT_FIELDS.get(sort_field, 'title')
+    if sort_dir == 'desc':
+        order_by = f'-{order_by}'
+    qs = qs.order_by(order_by)
+
+    export_format = request.GET.get('export')
+    if export_format in ('csv', 'excel'):
+        fields = ['title', 'quote_number', 'series', 'customer', 'status', 'total']
+        headers = ['Title', 'Quote Number', "Name(id='QuoteSeries', ctx=Load())", 'customers.Customer', 'Status', 'Total']
+        if export_format == 'csv':
+            return export_to_csv(qs, fields=fields, headers=headers, filename='quotes.csv')
+        return export_to_excel(qs, fields=fields, headers=headers, filename='quotes.xlsx')
+
+    paginator = Paginator(qs, per_page)
+    page_obj = paginator.get_page(page_number)
+
+    if request.htmx and request.htmx.target == 'datatable-body':
+        return django_render(request, 'quotes/partials/quotes_list.html', {
+            'quotes': page_obj, 'page_obj': page_obj,
+            'search_query': search_query, 'sort_field': sort_field,
+            'sort_dir': sort_dir, 'current_view': current_view, 'per_page': per_page,
+        })
+
+    return {
+        'quotes': page_obj, 'page_obj': page_obj,
+        'search_query': search_query, 'sort_field': sort_field,
+        'sort_dir': sort_dir, 'current_view': current_view, 'per_page': per_page,
+    }
+
+@login_required
 def quote_add(request):
-    hub = _hub(request)
-    settings = QuoteSettings.get_settings(hub)
-
+    hub_id = request.session.get('hub_id')
     if request.method == 'POST':
-        form = QuoteForm(request.POST)
-        if form.is_valid():
-            quote = form.save(commit=False)
-            quote.hub_id = hub
-            quote.created_by = request.session.get('local_user_id')
-
-            # Denormalize customer info if customer FK set
-            if quote.customer:
-                if not quote.customer_name:
-                    quote.customer_name = quote.customer.name
-                if not quote.customer_email:
-                    quote.customer_email = quote.customer.email or ''
-                if not quote.customer_phone:
-                    quote.customer_phone = quote.customer.phone or ''
-                if not quote.customer_address:
-                    parts = [
-                        quote.customer.address,
-                        quote.customer.city,
-                        quote.customer.postal_code,
-                    ]
-                    quote.customer_address = ', '.join(p for p in parts if p)
-
-            # Apply defaults
-            if not quote.notes and settings.default_notes:
-                quote.notes = settings.default_notes
-            if not quote.terms and settings.default_terms:
-                quote.terms = settings.default_terms
-            if not quote.valid_until:
-                quote.valid_until = date.today() + timedelta(days=settings.default_validity_days)
-
-            quote.save()
-            return htmx_redirect(f'/m/quotes/{quote.pk}/')
-
-        return django_render(request, 'quotes/partials/panel_quote_add.html', {
-            'form': form,
-            'series_list': QuoteSeries.objects.filter(
-                hub_id=hub, is_deleted=False, is_active=True,
-            ),
-            'settings': settings,
-            'errors': form.errors,
-        })
-
-    # GET — render add form
-    series_list = QuoteSeries.objects.filter(
-        hub_id=hub, is_deleted=False, is_active=True,
-    )
-    default_series = settings.default_series or series_list.filter(is_default=True).first()
-
-    form = QuoteForm(initial={
-        'series': default_series,
-        'tax_rate': settings.tax_rate,
-        'notes': settings.default_notes,
-        'terms': settings.default_terms,
-        'valid_until': date.today() + timedelta(days=settings.default_validity_days),
-    })
-    form.fields['series'].queryset = series_list
-
-    return {
-        'form': form,
-        'series_list': series_list,
-        'settings': settings,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Quote Detail
-# ---------------------------------------------------------------------------
+        quote_number = request.POST.get('quote_number', '').strip()
+        title = request.POST.get('title', '').strip()
+        customer_name = request.POST.get('customer_name', '').strip()
+        customer_email = request.POST.get('customer_email', '').strip()
+        customer_phone = request.POST.get('customer_phone', '').strip()
+        customer_address = request.POST.get('customer_address', '').strip()
+        related_lead = request.POST.get('related_lead', '').strip()
+        status = request.POST.get('status', '').strip()
+        notes = request.POST.get('notes', '').strip()
+        terms = request.POST.get('terms', '').strip()
+        subtotal = request.POST.get('subtotal', '0') or '0'
+        discount_amount = request.POST.get('discount_amount', '0') or '0'
+        discount_percent = request.POST.get('discount_percent', '0') or '0'
+        tax_amount = request.POST.get('tax_amount', '0') or '0'
+        tax_rate = request.POST.get('tax_rate', '0') or '0'
+        total = request.POST.get('total', '0') or '0'
+        valid_until = request.POST.get('valid_until') or None
+        sent_at = request.POST.get('sent_at') or None
+        accepted_at = request.POST.get('accepted_at') or None
+        rejected_at = request.POST.get('rejected_at') or None
+        converted_at = request.POST.get('converted_at') or None
+        rejection_reason = request.POST.get('rejection_reason', '').strip()
+        obj = Quote(hub_id=hub_id)
+        obj.quote_number = quote_number
+        obj.title = title
+        obj.customer_name = customer_name
+        obj.customer_email = customer_email
+        obj.customer_phone = customer_phone
+        obj.customer_address = customer_address
+        obj.related_lead = related_lead
+        obj.status = status
+        obj.notes = notes
+        obj.terms = terms
+        obj.subtotal = subtotal
+        obj.discount_amount = discount_amount
+        obj.discount_percent = discount_percent
+        obj.tax_amount = tax_amount
+        obj.tax_rate = tax_rate
+        obj.total = total
+        obj.valid_until = valid_until
+        obj.sent_at = sent_at
+        obj.accepted_at = accepted_at
+        obj.rejected_at = rejected_at
+        obj.converted_at = converted_at
+        obj.rejection_reason = rejection_reason
+        obj.save()
+        return _render_quotes_list(request, hub_id)
+    return django_render(request, 'quotes/partials/panel_quote_add.html', {})
 
 @login_required
-@with_module_nav('quotes', 'list')
-@htmx_view('quotes/pages/detail.html', 'quotes/partials/detail_content.html')
-def quote_detail(request, quote_id):
-    hub = _hub(request)
-    quote = Quote.objects.filter(
-        pk=quote_id, hub_id=hub, is_deleted=False,
-    ).select_related('series', 'customer').first()
-
-    if not quote:
-        return {'error': _('Quote not found')}
-
-    lines = QuoteLine.objects.filter(
-        quote=quote, is_deleted=False,
-    ).order_by('sort_order', 'created_at')
-
-    return {
-        'quote': quote,
-        'lines': lines,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Quote Edit
-# ---------------------------------------------------------------------------
-
-@login_required
-@with_module_nav('quotes', 'list')
-@htmx_view('quotes/pages/detail.html', 'quotes/partials/panel_quote_edit.html')
-def quote_edit(request, quote_id):
-    hub = _hub(request)
-    quote = Quote.objects.filter(
-        pk=quote_id, hub_id=hub, is_deleted=False,
-    ).first()
-
-    if not quote:
-        return {'error': _('Quote not found')}
-
-    if quote.status not in ('draft', 'sent'):
-        return {'error': _('Only draft or sent quotes can be edited')}
-
+def quote_edit(request, pk):
+    hub_id = request.session.get('hub_id')
+    obj = get_object_or_404(Quote, pk=pk, hub_id=hub_id, is_deleted=False)
     if request.method == 'POST':
-        form = QuoteForm(request.POST, instance=quote)
-        if form.is_valid():
-            q = form.save(commit=False)
-            q.updated_by = request.session.get('local_user_id')
-            q.save()
-            q.calculate_totals()
-            q.save(update_fields=[
-                'subtotal', 'discount_amount', 'tax_amount', 'total', 'updated_at',
-            ])
-            return htmx_redirect(f'/m/quotes/{quote.pk}/')
-
-        series_list = QuoteSeries.objects.filter(
-            hub_id=hub, is_deleted=False, is_active=True,
-        )
-        return django_render(request, 'quotes/partials/panel_quote_edit.html', {
-            'form': form,
-            'quote': quote,
-            'series_list': series_list,
-            'errors': form.errors,
-        })
-
-    series_list = QuoteSeries.objects.filter(
-        hub_id=hub, is_deleted=False, is_active=True,
-    )
-    form = QuoteForm(instance=quote)
-    form.fields['series'].queryset = series_list
-
-    return {
-        'form': form,
-        'quote': quote,
-        'series_list': series_list,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Quote Delete
-# ---------------------------------------------------------------------------
+        obj.quote_number = request.POST.get('quote_number', '').strip()
+        obj.title = request.POST.get('title', '').strip()
+        obj.customer_name = request.POST.get('customer_name', '').strip()
+        obj.customer_email = request.POST.get('customer_email', '').strip()
+        obj.customer_phone = request.POST.get('customer_phone', '').strip()
+        obj.customer_address = request.POST.get('customer_address', '').strip()
+        obj.related_lead = request.POST.get('related_lead', '').strip()
+        obj.status = request.POST.get('status', '').strip()
+        obj.notes = request.POST.get('notes', '').strip()
+        obj.terms = request.POST.get('terms', '').strip()
+        obj.subtotal = request.POST.get('subtotal', '0') or '0'
+        obj.discount_amount = request.POST.get('discount_amount', '0') or '0'
+        obj.discount_percent = request.POST.get('discount_percent', '0') or '0'
+        obj.tax_amount = request.POST.get('tax_amount', '0') or '0'
+        obj.tax_rate = request.POST.get('tax_rate', '0') or '0'
+        obj.total = request.POST.get('total', '0') or '0'
+        obj.valid_until = request.POST.get('valid_until') or None
+        obj.sent_at = request.POST.get('sent_at') or None
+        obj.accepted_at = request.POST.get('accepted_at') or None
+        obj.rejected_at = request.POST.get('rejected_at') or None
+        obj.converted_at = request.POST.get('converted_at') or None
+        obj.rejection_reason = request.POST.get('rejection_reason', '').strip()
+        obj.save()
+        return _render_quotes_list(request, hub_id)
+    return django_render(request, 'quotes/partials/panel_quote_edit.html', {'obj': obj})
 
 @login_required
 @require_POST
-def quote_delete(request, quote_id):
-    hub = _hub(request)
-    quote = Quote.objects.filter(
-        pk=quote_id, hub_id=hub, is_deleted=False,
-    ).first()
-
-    if not quote:
-        return JsonResponse({'ok': False}, status=404)
-
-    if quote.status not in ('draft',):
-        messages.error(request, _('Only draft quotes can be deleted'))
-        return _render_quotes_list(request, hub)
-
-    quote.is_deleted = True
-    quote.deleted_at = timezone.now()
-    quote.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
-    messages.success(request, _('Quote deleted successfully'))
-    return _render_quotes_list(request, hub)
-
-
-# ---------------------------------------------------------------------------
-# Quote Status Actions
-# ---------------------------------------------------------------------------
+def quote_delete(request, pk):
+    hub_id = request.session.get('hub_id')
+    obj = get_object_or_404(Quote, pk=pk, hub_id=hub_id, is_deleted=False)
+    obj.is_deleted = True
+    obj.deleted_at = timezone.now()
+    obj.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
+    return _render_quotes_list(request, hub_id)
 
 @login_required
 @require_POST
-def quote_send(request, quote_id):
-    """Mark quote as sent."""
-    hub = _hub(request)
-    quote = Quote.objects.filter(
-        pk=quote_id, hub_id=hub, is_deleted=False, status='draft',
-    ).select_related('series').first()
-
-    if not quote:
-        return JsonResponse({
-            'ok': False,
-            'error': _('Quote not found or not a draft'),
-        }, status=400)
-
-    success = quote.mark_sent()
-    if not success:
-        return JsonResponse({
-            'ok': False,
-            'error': _('Could not mark quote as sent'),
-        }, status=400)
-
-    return JsonResponse({'ok': True, 'number': quote.quote_number})
-
-
-@login_required
-@require_POST
-def quote_accept(request, quote_id):
-    """Mark quote as accepted."""
-    hub = _hub(request)
-    quote = Quote.objects.filter(
-        pk=quote_id, hub_id=hub, is_deleted=False, status='sent',
-    ).first()
-
-    if not quote:
-        return JsonResponse({
-            'ok': False,
-            'error': _('Quote not found or not in sent status'),
-        }, status=400)
-
-    success = quote.mark_accepted()
-    if not success:
-        return JsonResponse({
-            'ok': False,
-            'error': _('Could not accept quote'),
-        }, status=400)
-
-    return JsonResponse({'ok': True})
-
-
-@login_required
-@require_POST
-def quote_reject(request, quote_id):
-    """Mark quote as rejected."""
-    hub = _hub(request)
-    quote = Quote.objects.filter(
-        pk=quote_id, hub_id=hub, is_deleted=False, status='sent',
-    ).first()
-
-    if not quote:
-        return JsonResponse({
-            'ok': False,
-            'error': _('Quote not found or not in sent status'),
-        }, status=400)
-
-    reason = request.POST.get('reason', '')
-    success = quote.mark_rejected(reason=reason)
-    if not success:
-        return JsonResponse({
-            'ok': False,
-            'error': _('Could not reject quote'),
-        }, status=400)
-
-    return JsonResponse({'ok': True})
-
-
-# ---------------------------------------------------------------------------
-# Quote Duplicate
-# ---------------------------------------------------------------------------
-
-@login_required
-@require_POST
-def quote_duplicate(request, quote_id):
-    """Duplicate an existing quote as a new draft."""
-    hub = _hub(request)
-    original = Quote.objects.filter(
-        pk=quote_id, hub_id=hub, is_deleted=False,
-    ).first()
-
-    if not original:
-        return JsonResponse({'ok': False, 'error': _('Quote not found')}, status=404)
-
-    settings = QuoteSettings.get_settings(hub)
-
-    # Create new quote with same data
-    new_quote = Quote(
-        hub_id=hub,
-        series=original.series,
-        title=_('Copy of %(title)s') % {'title': original.title} if original.title else '',
-        customer=original.customer,
-        customer_name=original.customer_name,
-        customer_email=original.customer_email,
-        customer_phone=original.customer_phone,
-        customer_address=original.customer_address,
-        status='draft',
-        notes=original.notes,
-        terms=original.terms,
-        discount_percent=original.discount_percent,
-        tax_rate=original.tax_rate,
-        valid_until=date.today() + timedelta(days=settings.default_validity_days),
-        created_by=request.session.get('local_user_id'),
-    )
-    new_quote.save()
-
-    # Duplicate lines
-    original_lines = QuoteLine.objects.filter(
-        quote=original, is_deleted=False,
-    ).order_by('sort_order')
-
-    for line in original_lines:
-        QuoteLine.objects.create(
-            hub_id=hub,
-            quote=new_quote,
-            line_type=line.line_type,
-            product_id=line.product_id,
-            service_id=line.service_id,
-            description=line.description,
-            quantity=line.quantity,
-            unit_price=line.unit_price,
-            discount_percent=line.discount_percent,
-            tax_rate=line.tax_rate,
-            sort_order=line.sort_order,
-        )
-
-    # Recalculate totals
-    new_quote.calculate_totals()
-    new_quote.save(update_fields=[
-        'subtotal', 'discount_amount', 'tax_amount', 'total', 'updated_at',
-    ])
-
-    return JsonResponse({'ok': True, 'id': str(new_quote.pk)})
-
-
-# ---------------------------------------------------------------------------
-# Quote Convert
-# ---------------------------------------------------------------------------
-
-@login_required
-@require_POST
-def quote_convert(request, quote_id):
-    """Mark an accepted quote as converted."""
-    hub = _hub(request)
-    quote = Quote.objects.filter(
-        pk=quote_id, hub_id=hub, is_deleted=False, status='accepted',
-    ).first()
-
-    if not quote:
-        return JsonResponse({
-            'ok': False,
-            'error': _('Quote not found or not in accepted status'),
-        }, status=400)
-
-    success = quote.mark_converted()
-    if not success:
-        return JsonResponse({
-            'ok': False,
-            'error': _('Could not convert quote'),
-        }, status=400)
-
-    return JsonResponse({'ok': True, 'quote_id': str(quote.pk)})
-
-
-# ---------------------------------------------------------------------------
-# Quote Lines
-# ---------------------------------------------------------------------------
-
-@login_required
-@require_POST
-def quote_line_add(request, quote_id):
-    """Add a line item to a quote."""
-    hub = _hub(request)
-    quote = Quote.objects.filter(
-        pk=quote_id, hub_id=hub, is_deleted=False,
-    ).first()
-
-    if not quote:
-        return JsonResponse({'ok': False, 'error': _('Quote not found')}, status=404)
-
-    if quote.status not in ('draft', 'sent'):
-        return JsonResponse({
-            'ok': False,
-            'error': _('Cannot modify lines on this quote'),
-        }, status=400)
-
-    form = QuoteLineForm(request.POST)
-    if form.is_valid():
-        line = form.save(commit=False)
-        line.hub_id = hub
-        line.quote = quote
-        # Auto-set sort order if not provided
-        if not line.sort_order:
-            max_order = QuoteLine.objects.filter(
-                quote=quote, is_deleted=False,
-            ).order_by('-sort_order').values_list('sort_order', flat=True).first() or 0
-            line.sort_order = max_order + 1
-        line.save()
-
-        # Recalculate quote totals
-        quote.calculate_totals()
-        quote.save(update_fields=[
-            'subtotal', 'discount_amount', 'tax_amount', 'total', 'updated_at',
-        ])
-
-        # Return updated lines partial
-        lines = QuoteLine.objects.filter(
-            quote=quote, is_deleted=False,
-        ).order_by('sort_order', 'created_at')
-        return django_render(request, 'quotes/partials/quote_lines.html', {
-            'quote': quote,
-            'lines': lines,
-        })
-
-    return JsonResponse({'ok': False, 'errors': form.errors}, status=400)
-
-
-@login_required
-@require_POST
-def quote_line_edit(request, quote_id, line_id):
-    """Edit a line item."""
-    hub = _hub(request)
-    quote = Quote.objects.filter(
-        pk=quote_id, hub_id=hub, is_deleted=False,
-    ).first()
-
-    if not quote:
-        return JsonResponse({'ok': False, 'error': _('Quote not found')}, status=404)
-
-    if quote.status not in ('draft', 'sent'):
-        return JsonResponse({
-            'ok': False,
-            'error': _('Cannot modify lines on this quote'),
-        }, status=400)
-
-    line = QuoteLine.objects.filter(
-        pk=line_id, quote=quote, is_deleted=False,
-    ).first()
-
-    if not line:
-        return JsonResponse({'ok': False, 'error': _('Line not found')}, status=404)
-
-    form = QuoteLineForm(request.POST, instance=line)
-    if form.is_valid():
-        form.save()
-
-        # Recalculate quote totals
-        quote.calculate_totals()
-        quote.save(update_fields=[
-            'subtotal', 'discount_amount', 'tax_amount', 'total', 'updated_at',
-        ])
-
-        lines = QuoteLine.objects.filter(
-            quote=quote, is_deleted=False,
-        ).order_by('sort_order', 'created_at')
-        return django_render(request, 'quotes/partials/quote_lines.html', {
-            'quote': quote,
-            'lines': lines,
-        })
-
-    return JsonResponse({'ok': False, 'errors': form.errors}, status=400)
-
-
-@login_required
-@require_POST
-def quote_line_delete(request, quote_id, line_id):
-    """Delete a line item from a quote."""
-    hub = _hub(request)
-    quote = Quote.objects.filter(
-        pk=quote_id, hub_id=hub, is_deleted=False,
-    ).first()
-
-    if not quote:
-        return JsonResponse({'ok': False, 'error': _('Quote not found')}, status=404)
-
-    if quote.status not in ('draft', 'sent'):
-        return JsonResponse({
-            'ok': False,
-            'error': _('Cannot modify lines on this quote'),
-        }, status=400)
-
-    line = QuoteLine.objects.filter(
-        pk=line_id, quote=quote, is_deleted=False,
-    ).first()
-
-    if not line:
-        return JsonResponse({'ok': False, 'error': _('Line not found')}, status=404)
-
-    line.is_deleted = True
-    line.deleted_at = timezone.now()
-    line.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
-
-    # Recalculate quote totals
-    quote.calculate_totals()
-    quote.save(update_fields=[
-        'subtotal', 'discount_amount', 'tax_amount', 'total', 'updated_at',
-    ])
-
-    lines = QuoteLine.objects.filter(
-        quote=quote, is_deleted=False,
-    ).order_by('sort_order', 'created_at')
-    return django_render(request, 'quotes/partials/quote_lines.html', {
-        'quote': quote,
-        'lines': lines,
-    })
-
-
-# ---------------------------------------------------------------------------
-# Series
-# ---------------------------------------------------------------------------
-
-@login_required
-@with_module_nav('quotes', 'series')
-@htmx_view('quotes/pages/series.html', 'quotes/partials/series_content.html')
-def series_list(request):
-    hub = _hub(request)
-    series = QuoteSeries.objects.filter(
-        hub_id=hub, is_deleted=False,
-    ).annotate(
-        quote_count=Count(
-            'quote', filter=Q(quote__is_deleted=False),
-        ),
-    ).order_by('prefix')
-
-    return {'series_list': series}
-
-
-@login_required
-@require_POST
-def series_add(request):
-    hub = _hub(request)
-    form = QuoteSeriesForm(request.POST)
-    if form.is_valid():
-        series = form.save(commit=False)
-        series.hub_id = hub
-        series.save()
-        messages.success(request, _('Series created successfully'))
-        return _render_series_list(request, hub)
-    return JsonResponse({'ok': False, 'errors': form.errors}, status=400)
-
-
-@login_required
-@require_POST
-def series_edit(request, series_id):
-    hub = _hub(request)
-    series = QuoteSeries.objects.filter(
-        pk=series_id, hub_id=hub, is_deleted=False,
-    ).first()
-
-    if not series:
-        return JsonResponse({'ok': False, 'error': _('Series not found')}, status=404)
-
-    form = QuoteSeriesForm(request.POST, instance=series)
-    if form.is_valid():
-        form.save()
-        messages.success(request, _('Series updated successfully'))
-        return _render_series_list(request, hub)
-    return JsonResponse({'ok': False, 'errors': form.errors}, status=400)
-
-
-# ---------------------------------------------------------------------------
+def quotes_bulk_action(request):
+    hub_id = request.session.get('hub_id')
+    ids = [i.strip() for i in request.POST.get('ids', '').split(',') if i.strip()]
+    action = request.POST.get('action', '')
+    qs = Quote.objects.filter(hub_id=hub_id, is_deleted=False, id__in=ids)
+    if action == 'delete':
+        qs.update(is_deleted=True, deleted_at=timezone.now())
+    return _render_quotes_list(request, hub_id)
+
+
+# ======================================================================
 # Settings
-# ---------------------------------------------------------------------------
+# ======================================================================
 
 @login_required
 @with_module_nav('quotes', 'settings')
 @htmx_view('quotes/pages/settings.html', 'quotes/partials/settings_content.html')
 def settings_view(request):
-    hub = _hub(request)
-    settings_obj = QuoteSettings.get_settings(hub)
-    series_list = QuoteSeries.objects.filter(
-        hub_id=hub, is_deleted=False, is_active=True,
-    )
-    return {
-        'settings': settings_obj,
-        'series_list': series_list,
-    }
+    hub_id = request.session.get('hub_id')
+    config, _ = QuoteSettings.objects.get_or_create(hub_id=hub_id)
+    if request.method == 'POST':
+        config.default_validity_days = request.POST.get('default_validity_days', config.default_validity_days)
+        config.default_series = request.POST.get('default_series', '').strip()
+        config.default_notes = request.POST.get('default_notes', '').strip()
+        config.default_terms = request.POST.get('default_terms', '').strip()
+        config.tax_rate = request.POST.get('tax_rate', config.tax_rate)
+        config.show_tax = request.POST.get('show_tax') == 'on'
+        config.show_discount = request.POST.get('show_discount') == 'on'
+        config.save()
+    return {'config': config}
 
-
-@login_required
-@require_POST
-def settings_save(request):
-    """Save a single setting field via HTMX."""
-    hub = _hub(request)
-    settings_obj = QuoteSettings.get_settings(hub)
-    field = request.POST.get('field')
-    value = request.POST.get('value', '')
-
-    text_fields = {
-        'default_notes', 'default_terms',
-    }
-    number_fields = {
-        'default_validity_days': int,
-        'tax_rate': Decimal,
-    }
-    toggle_fields = {
-        'show_tax', 'show_discount',
-    }
-    fk_fields = {
-        'default_series',
-    }
-
-    if field in text_fields:
-        setattr(settings_obj, field, value)
-        settings_obj.save(update_fields=[field, 'updated_at'])
-        return JsonResponse({'ok': True})
-
-    elif field in number_fields:
-        try:
-            cast_fn = number_fields[field]
-            setattr(settings_obj, field, cast_fn(value))
-            settings_obj.save(update_fields=[field, 'updated_at'])
-            return JsonResponse({'ok': True})
-        except (ValueError, TypeError):
-            return JsonResponse({'ok': False, 'error': _('Invalid value')}, status=400)
-
-    elif field in toggle_fields:
-        current = getattr(settings_obj, field)
-        setattr(settings_obj, field, not current)
-        settings_obj.save(update_fields=[field, 'updated_at'])
-        return JsonResponse({'ok': True, 'value': not current})
-
-    elif field in fk_fields:
-        if field == 'default_series':
-            if value:
-                series = QuoteSeries.objects.filter(
-                    pk=value, hub_id=hub, is_deleted=False,
-                ).first()
-                settings_obj.default_series = series
-            else:
-                settings_obj.default_series = None
-            settings_obj.save(update_fields=['default_series', 'updated_at'])
-            return JsonResponse({'ok': True})
-
-    return JsonResponse({'ok': False, 'error': _('Invalid field')}, status=400)
