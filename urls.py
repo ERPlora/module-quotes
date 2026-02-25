@@ -7,6 +7,11 @@ urlpatterns = [
     # Dashboard
     path('', views.dashboard, name='dashboard'),
 
+    # Navigation tab aliases
+    path('list/', views.quote_serieses_list, name='list'),
+    path('series/', views.dashboard, name='series'),
+
+
     # QuoteSeries
     path('quote_serieses/', views.quote_serieses_list, name='quote_serieses_list'),
     path('quote_serieses/add/', views.quote_series_add, name='quote_series_add'),
