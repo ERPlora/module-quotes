@@ -1,0 +1,302 @@
+# Spanish translations for Quotes
+# Copyright (C) 2025
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-25 00:00+0000\n"
+"PO-Revision-Date: 2026-02-25 00:00+0000\n"
+"Last-Translator: ERPlora Team <info@erplora.com>\n"
+"Language: es\n"
+"Language-Team: Spanish\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: module.py
+msgid "Quotes"
+msgstr "Presupuestos"
+
+msgid "Create and manage quotes, proposals and budgets"
+msgstr "Crear y gestionar presupuestos, propuestas y cotizaciones"
+
+msgid "Dashboard"
+msgstr "Panel"
+
+msgid "Series"
+msgstr "Series"
+
+msgid "Settings"
+msgstr "Configuración"
+
+#: models.py - QuoteSeries
+msgid "Name"
+msgstr "Nombre"
+
+msgid "Prefix"
+msgstr "Prefijo"
+
+msgid "Next Number"
+msgstr "Siguiente número"
+
+msgid "Default Series"
+msgstr "Serie predeterminada"
+
+msgid "Active"
+msgstr "Activo"
+
+msgid "Number Digits"
+msgstr "Dígitos del número"
+
+msgid "Quote Series"
+msgstr "Series de presupuestos"
+
+#: models.py - QuoteSettings
+msgid "Default Validity (days)"
+msgstr "Validez predeterminada (días)"
+
+msgid "Default Notes"
+msgstr "Notas predeterminadas"
+
+msgid "Default notes included in new quotes"
+msgstr "Notas predeterminadas incluidas en nuevos presupuestos"
+
+msgid "Default Terms"
+msgstr "Condiciones predeterminadas"
+
+msgid "Default terms and conditions for quotes"
+msgstr "Condiciones predeterminadas para presupuestos"
+
+msgid "Default Tax Rate %"
+msgstr "Tasa de impuesto predeterminada %"
+
+msgid "Show Tax"
+msgstr "Mostrar impuesto"
+
+msgid "Show tax breakdown on quotes"
+msgstr "Mostrar desglose de impuestos en presupuestos"
+
+msgid "Show Discount"
+msgstr "Mostrar descuento"
+
+msgid "Show discount column on quotes"
+msgstr "Mostrar columna de descuento en presupuestos"
+
+msgid "Quote Settings"
+msgstr "Configuración de presupuestos"
+
+#: models.py - Quote Status
+msgid "Draft"
+msgstr "Borrador"
+
+msgid "Sent"
+msgstr "Enviado"
+
+msgid "Accepted"
+msgstr "Aceptado"
+
+msgid "Rejected"
+msgstr "Rechazado"
+
+msgid "Expired"
+msgstr "Vencido"
+
+msgid "Converted"
+msgstr "Convertido"
+
+#: models.py - Quote fields
+msgid "Quote Number"
+msgstr "Número de presupuesto"
+
+msgid "Title"
+msgstr "Título"
+
+msgid "Customer"
+msgstr "Cliente"
+
+msgid "Customer Name"
+msgstr "Nombre del cliente"
+
+msgid "Customer Email"
+msgstr "Email del cliente"
+
+msgid "Customer Phone"
+msgstr "Teléfono del cliente"
+
+msgid "Customer Address"
+msgstr "Dirección del cliente"
+
+msgid "Related Lead"
+msgstr "Prospecto relacionado"
+
+msgid "UUID of the related lead"
+msgstr "UUID del prospecto relacionado"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Notes"
+msgstr "Notas"
+
+msgid "Terms & Conditions"
+msgstr "Términos y condiciones"
+
+msgid "Subtotal"
+msgstr "Subtotal"
+
+msgid "Discount Amount"
+msgstr "Importe de descuento"
+
+msgid "Discount %"
+msgstr "Descuento %"
+
+msgid "Tax Amount"
+msgstr "Importe de impuestos"
+
+msgid "Tax Rate %"
+msgstr "Tasa de impuesto %"
+
+msgid "Total"
+msgstr "Total"
+
+msgid "Valid Until"
+msgstr "Válido hasta"
+
+msgid "Sent At"
+msgstr "Enviado el"
+
+msgid "Accepted At"
+msgstr "Aceptado el"
+
+msgid "Rejected At"
+msgstr "Rechazado el"
+
+msgid "Converted At"
+msgstr "Convertido el"
+
+msgid "Rejection Reason"
+msgstr "Motivo de rechazo"
+
+msgid "Quote"
+msgstr "Presupuesto"
+
+#: models.py - QuoteLine
+msgid "Product"
+msgstr "Producto"
+
+msgid "UUID of the referenced product"
+msgstr "UUID del producto referenciado"
+
+msgid "Service"
+msgstr "Servicio"
+
+msgid "UUID of the referenced service"
+msgstr "UUID del servicio referenciado"
+
+msgid "Description"
+msgstr "Descripción"
+
+msgid "Quantity"
+msgstr "Cantidad"
+
+msgid "Unit Price"
+msgstr "Precio unitario"
+
+msgid "Line Total"
+msgstr "Total de línea"
+
+msgid "Sort Order"
+msgstr "Orden"
+
+msgid "Quote Line"
+msgstr "Línea de presupuesto"
+
+msgid "Quote Lines"
+msgstr "Líneas de presupuesto"
+
+#: templates - add/edit panels
+msgid "Add Quote"
+msgstr "Añadir presupuesto"
+
+msgid "Edit Quote"
+msgstr "Editar presupuesto"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Select..."
+msgstr "Seleccionar..."
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Add"
+msgstr "Añadir"
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid "Delete"
+msgstr "Eliminar"
+
+msgid "Danger Zone"
+msgstr "Zona de peligro"
+
+msgid "Are you sure?"
+msgstr "¿Estás seguro?"
+
+#: templates - series panel
+msgid "Edit Quote Series"
+msgstr "Editar serie de presupuestos"
+
+#: templates - settings
+msgid "Module configuration"
+msgstr "Configuración del módulo"
+
+msgid "Save Settings"
+msgstr "Guardar configuración"
+
+#: templates - list
+msgid "Search..."
+msgstr "Buscar..."
+
+msgid "Export"
+msgstr "Exportar"
+
+msgid "Export as CSV"
+msgstr "Exportar como CSV"
+
+msgid "Export as Excel"
+msgstr "Exportar como Excel"
+
+msgid "selected"
+msgstr "seleccionados"
+
+msgid "Confirm Delete"
+msgstr "Confirmar eliminación"
+
+msgid "Are you sure you want to delete"
+msgstr "¿Estás seguro de que quieres eliminar"
+
+msgid "Actions"
+msgstr "Acciones"
+
+msgid "Edit"
+msgstr "Editar"
+
+msgid "Show"
+msgstr "Mostrar"
+
+msgid "per page"
+msgstr "por página"
+
+msgid "Showing %(start)s-%(end)s of %(total)s"
+msgstr "Mostrando %(start)s-%(end)s de %(total)s"
+
+msgid "No items yet"
+msgstr "Sin elementos"
+
+msgid "Add your first item to get started"
+msgstr "Añade tu primer elemento para empezar"

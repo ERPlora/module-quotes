@@ -1,0 +1,302 @@
+# English translations for Quotes
+# Copyright (C) 2025
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-25 00:00+0000\n"
+"PO-Revision-Date: 2026-02-25 00:00+0000\n"
+"Last-Translator: ERPlora Team <info@erplora.com>\n"
+"Language: en\n"
+"Language-Team: English\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: module.py
+msgid "Quotes"
+msgstr "Quotes"
+
+msgid "Create and manage quotes, proposals and budgets"
+msgstr "Create and manage quotes, proposals and budgets"
+
+msgid "Dashboard"
+msgstr "Dashboard"
+
+msgid "Series"
+msgstr "Series"
+
+msgid "Settings"
+msgstr "Settings"
+
+#: models.py - QuoteSeries
+msgid "Name"
+msgstr "Name"
+
+msgid "Prefix"
+msgstr "Prefix"
+
+msgid "Next Number"
+msgstr "Next Number"
+
+msgid "Default Series"
+msgstr "Default Series"
+
+msgid "Active"
+msgstr "Active"
+
+msgid "Number Digits"
+msgstr "Number Digits"
+
+msgid "Quote Series"
+msgstr "Quote Series"
+
+#: models.py - QuoteSettings
+msgid "Default Validity (days)"
+msgstr "Default Validity (days)"
+
+msgid "Default Notes"
+msgstr "Default Notes"
+
+msgid "Default notes included in new quotes"
+msgstr "Default notes included in new quotes"
+
+msgid "Default Terms"
+msgstr "Default Terms"
+
+msgid "Default terms and conditions for quotes"
+msgstr "Default terms and conditions for quotes"
+
+msgid "Default Tax Rate %"
+msgstr "Default Tax Rate %"
+
+msgid "Show Tax"
+msgstr "Show Tax"
+
+msgid "Show tax breakdown on quotes"
+msgstr "Show tax breakdown on quotes"
+
+msgid "Show Discount"
+msgstr "Show Discount"
+
+msgid "Show discount column on quotes"
+msgstr "Show discount column on quotes"
+
+msgid "Quote Settings"
+msgstr "Quote Settings"
+
+#: models.py - Quote Status
+msgid "Draft"
+msgstr "Draft"
+
+msgid "Sent"
+msgstr "Sent"
+
+msgid "Accepted"
+msgstr "Accepted"
+
+msgid "Rejected"
+msgstr "Rejected"
+
+msgid "Expired"
+msgstr "Expired"
+
+msgid "Converted"
+msgstr "Converted"
+
+#: models.py - Quote fields
+msgid "Quote Number"
+msgstr "Quote Number"
+
+msgid "Title"
+msgstr "Title"
+
+msgid "Customer"
+msgstr "Customer"
+
+msgid "Customer Name"
+msgstr "Customer Name"
+
+msgid "Customer Email"
+msgstr "Customer Email"
+
+msgid "Customer Phone"
+msgstr "Customer Phone"
+
+msgid "Customer Address"
+msgstr "Customer Address"
+
+msgid "Related Lead"
+msgstr "Related Lead"
+
+msgid "UUID of the related lead"
+msgstr "UUID of the related lead"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Notes"
+msgstr "Notes"
+
+msgid "Terms & Conditions"
+msgstr "Terms & Conditions"
+
+msgid "Subtotal"
+msgstr "Subtotal"
+
+msgid "Discount Amount"
+msgstr "Discount Amount"
+
+msgid "Discount %"
+msgstr "Discount %"
+
+msgid "Tax Amount"
+msgstr "Tax Amount"
+
+msgid "Tax Rate %"
+msgstr "Tax Rate %"
+
+msgid "Total"
+msgstr "Total"
+
+msgid "Valid Until"
+msgstr "Valid Until"
+
+msgid "Sent At"
+msgstr "Sent At"
+
+msgid "Accepted At"
+msgstr "Accepted At"
+
+msgid "Rejected At"
+msgstr "Rejected At"
+
+msgid "Converted At"
+msgstr "Converted At"
+
+msgid "Rejection Reason"
+msgstr "Rejection Reason"
+
+msgid "Quote"
+msgstr "Quote"
+
+#: models.py - QuoteLine
+msgid "Product"
+msgstr "Product"
+
+msgid "UUID of the referenced product"
+msgstr "UUID of the referenced product"
+
+msgid "Service"
+msgstr "Service"
+
+msgid "UUID of the referenced service"
+msgstr "UUID of the referenced service"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Quantity"
+msgstr "Quantity"
+
+msgid "Unit Price"
+msgstr "Unit Price"
+
+msgid "Line Total"
+msgstr "Line Total"
+
+msgid "Sort Order"
+msgstr "Sort Order"
+
+msgid "Quote Line"
+msgstr "Quote Line"
+
+msgid "Quote Lines"
+msgstr "Quote Lines"
+
+#: templates - add/edit panels
+msgid "Add Quote"
+msgstr "Add Quote"
+
+msgid "Edit Quote"
+msgstr "Edit Quote"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Select..."
+msgstr "Select..."
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Add"
+msgstr "Add"
+
+msgid "Save"
+msgstr "Save"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "Danger Zone"
+msgstr "Danger Zone"
+
+msgid "Are you sure?"
+msgstr "Are you sure?"
+
+#: templates - series panel
+msgid "Edit Quote Series"
+msgstr "Edit Quote Series"
+
+#: templates - settings
+msgid "Module configuration"
+msgstr "Module configuration"
+
+msgid "Save Settings"
+msgstr "Save Settings"
+
+#: templates - list
+msgid "Search..."
+msgstr "Search..."
+
+msgid "Export"
+msgstr "Export"
+
+msgid "Export as CSV"
+msgstr "Export as CSV"
+
+msgid "Export as Excel"
+msgstr "Export as Excel"
+
+msgid "selected"
+msgstr "selected"
+
+msgid "Confirm Delete"
+msgstr "Confirm Delete"
+
+msgid "Are you sure you want to delete"
+msgstr "Are you sure you want to delete"
+
+msgid "Actions"
+msgstr "Actions"
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "Show"
+msgstr "Show"
+
+msgid "per page"
+msgstr "per page"
+
+msgid "Showing %(start)s-%(end)s of %(total)s"
+msgstr "Showing %(start)s-%(end)s of %(total)s"
+
+msgid "No items yet"
+msgstr "No items yet"
+
+msgid "Add your first item to get started"
+msgstr "Add your first item to get started"
