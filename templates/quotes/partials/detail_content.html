@@ -14,15 +14,11 @@
         </button>
     </div>
     {% else %}
+    <div data-back-url="{% url 'quotes:list' %}" hidden></div>
+
     <!-- Page Header -->
     <div class="flex justify-between items-center mb-6">
         <div class="flex items-center gap-4">
-            <button class="btn btn-ghost"
-                hx-get="{% url 'quotes:list' %}"
-                hx-target="#main-content-area"
-                hx-push-url="true">
-                {% icon "arrow-back-outline" %}
-            </button>
             <div>
                 <h1 class="text-2xl font-bold">
                     {{ quote.quote_number|default:"Draft Quote" }}
@@ -361,9 +357,9 @@ function sendQuote() {
         if (data.ok) {
             htmx.ajax('GET', '{% url "quotes:detail" quote.id %}', '#main-content-area');
         } else {
-            alert(data.error || '{% trans "Error sending quote" %}');
+            showToast(data.error || '{% trans "Error sending quote" %}', 'error');
         }
-    }).catch(() => alert('{% trans "Error sending quote" %}'));
+    }).catch(() => showToast('{% trans "Error sending quote" %}', 'error'));
 }
 
 function acceptQuote() {
@@ -375,9 +371,9 @@ function acceptQuote() {
         if (data.ok) {
             htmx.ajax('GET', '{% url "quotes:detail" quote.id %}', '#main-content-area');
         } else {
-            alert(data.error || '{% trans "Error accepting quote" %}');
+            showToast(data.error || '{% trans "Error accepting quote" %}', 'error');
         }
-    }).catch(() => alert('{% trans "Error accepting quote" %}'));
+    }).catch(() => showToast('{% trans "Error accepting quote" %}', 'error'));
 }
 
 function openRejectModal() {
@@ -399,9 +395,9 @@ function submitReject() {
         if (data.ok) {
             htmx.ajax('GET', '{% url "quotes:detail" quote.id %}', '#main-content-area');
         } else {
-            alert(data.error || '{% trans "Error rejecting quote" %}');
+            showToast(data.error || '{% trans "Error rejecting quote" %}', 'error');
         }
-    }).catch(() => alert('{% trans "Error rejecting quote" %}'));
+    }).catch(() => showToast('{% trans "Error rejecting quote" %}', 'error'));
 }
 
 function duplicateQuote() {
@@ -413,9 +409,9 @@ function duplicateQuote() {
             htmx.ajax('GET', '/m/quotes/' + data.id + '/', '#main-content-area');
             history.pushState({}, '', '/m/quotes/' + data.id + '/');
         } else {
-            alert(data.error || '{% trans "Error duplicating quote" %}');
+            showToast(data.error || '{% trans "Error duplicating quote" %}', 'error');
         }
-    }).catch(() => alert('{% trans "Error duplicating quote" %}'));
+    }).catch(() => showToast('{% trans "Error duplicating quote" %}', 'error'));
 }
 
 function convertQuote() {
@@ -427,9 +423,9 @@ function convertQuote() {
         if (data.ok) {
             htmx.ajax('GET', '{% url "quotes:detail" quote.id %}', '#main-content-area');
         } else {
-            alert(data.error || '{% trans "Error converting quote" %}');
+            showToast(data.error || '{% trans "Error converting quote" %}', 'error');
         }
-    }).catch(() => alert('{% trans "Error converting quote" %}'));
+    }).catch(() => showToast('{% trans "Error converting quote" %}', 'error'));
 }
 </script>
 {% endif %}
