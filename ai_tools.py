@@ -105,3 +105,73 @@ class CreateQuote(AssistantTool):
             )
         q.save()  # Triggers total recalculation if applicable
         return {"id": str(q.id), "quote_number": q.quote_number, "created": True}
+
+
+@register_tool
+class GetQuote(AssistantTool):
+    name = "get_quote"
+    description = "Get detailed quote info including line items and status timestamps."
+    module_id = "quotes"
+    required_permission = "quotes.view_quote"
+    parameters = {
+        "type": "object",
+        "properties": {"quote_id": {"type": "string", "description": "Quote ID"}},
+        "required": ["quote_id"],
+        "additionalProperties": False,
+    }
+
+    def execute(self, args, request):
+        from quotes.models import Quote
+        q = Quote.objects.select_related('customer').get(id=args['quote_id'])
+        lines = q.lines.filter(is_deleted=False).order_by('sort_order')
+        return {
+            "id": str(q.id), "quote_number": q.quote_number, "title": q.title,
+            "customer_name": q.customer_name, "customer_email": q.customer_email,
+            "status": q.status, "subtotal": str(q.subtotal), "tax_amount": str(q.tax_amount),
+            "total": str(q.total), "valid_until": str(q.valid_until) if q.valid_until else None,
+            "notes": q.notes, "terms": q.terms,
+            "sent_at": q.sent_at.isoformat() if q.sent_at else None,
+            "accepted_at": q.accepted_at.isoformat() if q.accepted_at else None,
+            "lines": [
+                {"description": l.description, "quantity": str(l.quantity),
+                 "unit_price": str(l.unit_price), "total": str(l.total)}
+                for l in lines
+            ],
+        }
+
+
+@register_tool
+class UpdateQuoteStatus(AssistantTool):
+    name = "update_quote_status"
+    description = "Update quote status: send (draft→sent), accept (sent→accepted), reject (sent→rejected), convert (accepted→converted)."
+    module_id = "quotes"
+    required_permission = "quotes.change_quote"
+    requires_confirmation = True
+    parameters = {
+        "type": "object",
+        "properties": {
+            "quote_id": {"type": "string", "description": "Quote ID"},
+            "action": {"type": "string", "description": "Action: send, accept, reject, convert"},
+            "reason": {"type": "string", "description": "Rejection reason (for reject action)"},
+        },
+        "required": ["quote_id", "action"],
+        "additionalProperties": False,
+    }
+
+    def execute(self, args, request):
+        from quotes.models import Quote
+        q = Quote.objects.get(id=args['quote_id'])
+        action = args['action']
+        if action == 'send':
+            ok = q.mark_sent()
+        elif action == 'accept':
+            ok = q.mark_accepted()
+        elif action == 'reject':
+            ok = q.mark_rejected(reason=args.get('reason', ''))
+        elif action == 'convert':
+            ok = q.mark_converted()
+        else:
+            return {"error": f"Unknown action: {action}"}
+        if not ok:
+            return {"error": f"Cannot {action} a {q.status} quote"}
+        return {"id": str(q.id), "quote_number": q.quote_number, "status": q.status}
