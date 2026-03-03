@@ -33,3 +33,19 @@ PERMISSIONS = [
     'quotes.convert_quote',
     'quotes.manage_settings',
 ]
+
+ROLE_PERMISSIONS = {
+    "admin": ["*"],
+    "manager": [
+        "accept_quote",
+        "add_quote",
+        "change_quote",
+        "convert_quote",
+        "send_quote",
+        "view_quote",
+    ],
+    "employee": [
+        "add_quote",
+        "view_quote",
+    ],
+}
