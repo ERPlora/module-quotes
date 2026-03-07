@@ -3,6 +3,8 @@ Quotes Module Views
 """
 from django.core.paginator import Paginator
 from django.db.models import Q, Count
+from django.http import HttpResponse
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, render as django_render
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -114,6 +116,7 @@ def quote_serieses_list(request):
     }
 
 @login_required
+@htmx_view('quotes/pages/quote_series_add.html', 'quotes/partials/quote_series_add_content.html')
 def quote_series_add(request):
     hub_id = request.session.get('hub_id')
     if request.method == 'POST':
@@ -131,10 +134,13 @@ def quote_series_add(request):
         obj.is_active = is_active
         obj.number_digits = number_digits
         obj.save()
-        return _render_quote_serieses_list(request, hub_id)
-    return django_render(request, 'quotes/partials/panel_quote_series_add.html', {})
+        response = HttpResponse(status=204)
+        response['HX-Redirect'] = reverse('quotes:series')
+        return response
+    return {}
 
 @login_required
+@htmx_view('quotes/pages/quote_series_edit.html', 'quotes/partials/quote_series_edit_content.html')
 def quote_series_edit(request, pk):
     hub_id = request.session.get('hub_id')
     obj = get_object_or_404(QuoteSeries, pk=pk, hub_id=hub_id, is_deleted=False)
@@ -147,7 +153,7 @@ def quote_series_edit(request, pk):
         obj.number_digits = request.POST.get('number_digits', '').strip()
         obj.save()
         return _render_quote_serieses_list(request, hub_id)
-    return django_render(request, 'quotes/partials/panel_quote_series_edit.html', {'obj': obj})
+    return {'obj': obj}
 
 @login_required
 @require_POST
@@ -265,6 +271,7 @@ def quotes_list(request):
     }
 
 @login_required
+@htmx_view('quotes/pages/quote_add.html', 'quotes/partials/quote_add_content.html')
 def quote_add(request):
     hub_id = request.session.get('hub_id')
     if request.method == 'POST':
@@ -315,9 +322,10 @@ def quote_add(request):
         obj.rejection_reason = rejection_reason
         obj.save()
         return _render_quotes_list(request, hub_id)
-    return django_render(request, 'quotes/partials/panel_quote_add.html', {})
+    return {}
 
 @login_required
+@htmx_view('quotes/pages/quote_edit.html', 'quotes/partials/quote_edit_content.html')
 def quote_edit(request, pk):
     hub_id = request.session.get('hub_id')
     obj = get_object_or_404(Quote, pk=pk, hub_id=hub_id, is_deleted=False)
@@ -346,7 +354,7 @@ def quote_edit(request, pk):
         obj.rejection_reason = request.POST.get('rejection_reason', '').strip()
         obj.save()
         return _render_quotes_list(request, hub_id)
-    return django_render(request, 'quotes/partials/panel_quote_edit.html', {'obj': obj})
+    return {'obj': obj}
 
 @login_required
 @require_POST

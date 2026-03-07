@@ -1,0 +1,147 @@
+{% load djicons i18n %}
+<div data-back-url="{% url 'quotes:quotes_list' %}" hidden></div>
+
+<div class="p-4">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold">{% trans "Edit Quote" %}</h1>
+        <div class="flex gap-2">
+            <a class="btn btn-ghost btn-sm"
+               hx-get="{% url 'quotes:quotes_list' %}"
+               hx-target="#main-content-area"
+               hx-push-url="true">
+                {% trans "Cancel" %}
+            </a>
+            <button type="submit" form="edit-quote-form" class="btn btn-sm color-primary">
+                {% icon "checkmark-outline" %}
+                {% trans "Save" %}
+            </button>
+        </div>
+    </div>
+
+        {% if error %}
+        <div class="callout callout-error">
+            <div class="callout-content"><span class="callout-text">{{ error }}</span></div>
+        </div>
+        {% endif %}
+    <!-- Form -->
+    <form id="edit-quote-form"
+          hx-post="{% url 'quotes:quote_edit' obj.id %}" class="max-w-2xl">
+        {% csrf_token %}
+        <div class="card mb-4">
+            <div class="card-body flex flex-col gap-4">
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Quote Number" %}</label>
+                <input type="text" name="quote_number" class="input input-sm w-full" value="{{ obj.quote_number }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Title" %}</label>
+                <input type="text" name="title" class="input input-sm w-full" value="{{ obj.title }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Customer Name" %}</label>
+                <input type="text" name="customer_name" class="input input-sm w-full" value="{{ obj.customer_name }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Customer Email" %}</label>
+                <input type="email" name="customer_email" class="input input-sm w-full" value="{{ obj.customer_email }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Customer Phone" %}</label>
+                <input type="text" name="customer_phone" class="input input-sm w-full" value="{{ obj.customer_phone }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Customer Address" %}</label>
+                <textarea name="customer_address" class="textarea textarea-sm w-full" rows="3">{{ obj.customer_address }}</textarea>
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Related Lead" %}</label>
+                <input type="text" name="related_lead" class="input input-sm w-full" value="{{ obj.related_lead }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Status" %}</label>
+                <select name="status" class="select select-sm w-full">
+                <option value="">---</option>
+                </select>
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Notes" %}</label>
+                <textarea name="notes" class="textarea textarea-sm w-full" rows="3">{{ obj.notes }}</textarea>
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Terms & Conditions" %}</label>
+                <textarea name="terms" class="textarea textarea-sm w-full" rows="3">{{ obj.terms }}</textarea>
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Subtotal" %}</label>
+                <input type="number" name="subtotal" class="input input-sm w-full" step="0.01" value="{{ obj.subtotal }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Discount Amount" %}</label>
+                <input type="number" name="discount_amount" class="input input-sm w-full" step="0.01" value="{{ obj.discount_amount }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Discount %" %}</label>
+                <input type="number" name="discount_percent" class="input input-sm w-full" step="0.01" value="{{ obj.discount_percent }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Tax Amount" %}</label>
+                <input type="number" name="tax_amount" class="input input-sm w-full" step="0.01" value="{{ obj.tax_amount }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Tax Rate %" %}</label>
+                <input type="number" name="tax_rate" class="input input-sm w-full" step="0.01" value="{{ obj.tax_rate }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Total" %}</label>
+                <input type="number" name="total" class="input input-sm w-full" step="0.01" value="{{ obj.total }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Valid Until" %}</label>
+                <input type="date" name="valid_until" class="input input-sm w-full" value="{{ obj.valid_until }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Sent At" %}</label>
+                <input type="datetime-local" name="sent_at" class="input input-sm w-full" value="{{ obj.sent_at }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Accepted At" %}</label>
+                <input type="datetime-local" name="accepted_at" class="input input-sm w-full" value="{{ obj.accepted_at }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Rejected At" %}</label>
+                <input type="datetime-local" name="rejected_at" class="input input-sm w-full" value="{{ obj.rejected_at }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Converted At" %}</label>
+                <input type="datetime-local" name="converted_at" class="input input-sm w-full" value="{{ obj.converted_at }}">
+                </div>
+
+                <div>
+                <label class="text-sm font-medium mb-1 block">{% trans "Rejection Reason" %}</label>
+                <textarea name="rejection_reason" class="textarea textarea-sm w-full" rows="3">{{ obj.rejection_reason }}</textarea>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
