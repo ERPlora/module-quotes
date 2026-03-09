@@ -26,7 +26,7 @@
         {% endif %}
     <!-- Form -->
     <form id="add-quote-form"
-          hx-post="{% url 'quotes:quote_add' %}" class="max-w-2xl">
+          hx-post="{% url 'quotes:quote_add' %}">
         {% csrf_token %}
         <div class="card mb-4">
             <div class="card-body flex flex-col gap-4">
